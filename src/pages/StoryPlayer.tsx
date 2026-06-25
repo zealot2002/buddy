@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, Heart, Share2, Volume2, VolumeX,
-  SkipBack, SkipForward, MapPin, Clock, ChevronDown, ChevronUp,
+  MapPin, Clock, ChevronDown, ChevronUp,
   User, ChevronRight, Check
 } from 'lucide-react';
 import { Header } from '../components/Header';
+import { PageContent, PageShell } from '../components/PageShell';
 import { useStory, useCompanions } from '../hooks/useApi';
 import { usePlayerStore } from '../store/player';
 import { useFavoritesStore } from '../store/favorites';
@@ -25,7 +26,6 @@ export const StoryPlayer = () => {
     progress, 
     duration,
     play, 
-    pause, 
     toggle, 
     setProgress, 
     stop,
@@ -34,7 +34,6 @@ export const StoryPlayer = () => {
   const { isStoryFavorite, addStory, removeStory } = useFavoritesStore();
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
-  const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
 
@@ -75,12 +74,12 @@ export const StoryPlayer = () => {
 
   if (loading || !story) {
     return (
-      <div className="min-h-screen bg-deep-navy">
+      <PageShell withBottomNav={false}>
         <Header />
-        <div className="pt-16 flex items-center justify-center h-64">
+        <PageContent className="flex items-center justify-center min-h-[50vh]">
           <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
-        </div>
-      </div>
+        </PageContent>
+      </PageShell>
     );
   }
 
@@ -91,57 +90,60 @@ export const StoryPlayer = () => {
   const currentCompanion = companions.find((c) => c.id === currentCompanionId);
 
   return (
-    <div className="min-h-screen bg-deep-navy">
+    <PageShell withBottomNav={false}>
       <Header />
       
-      <main className="pt-16 pb-24 px-4">
+      <PageContent>
         <button 
+          type="button"
           onClick={handleBack}
-          className="mb-4 flex items-center gap-2 text-gray-400 hover:text-light-blue transition-colors"
+          className="mb-3 flex items-center gap-2 text-gray-400 active:text-light-blue transition-colors touch-target"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>返回</span>
         </button>
 
-        <div className="relative rounded-3xl overflow-hidden h-64 mb-6">
+        <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden aspect-[16/10] mb-4 sm:mb-6">
           <img 
             src={story.coverImage}
             alt={story.title}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-deep-navy via-deep-navy/30 to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4">
-            <h1 className="font-serif text-2xl font-bold text-light-blue">{story.title}</h1>
+          <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4">
+            <h1 className="font-serif text-xl sm:text-2xl font-bold text-light-blue line-clamp-2">{story.title}</h1>
           </div>
         </div>
 
-        <div className="bg-card-bg rounded-2xl p-6 border border-card-border mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
+        <div className="bg-card-bg rounded-2xl p-4 sm:p-6 border border-card-border mb-4 sm:mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <button 
+                type="button"
                 onClick={toggle}
-                className="w-16 h-16 rounded-full bg-gradient-to-r from-gold to-amber flex items-center justify-center hover:scale-110 transition-transform"
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-r from-gold to-amber flex items-center justify-center active:scale-105 transition-transform shrink-0 touch-target"
               >
                 {isPlaying ? (
-                  <Pause className="w-8 h-8 text-deep-navy" />
+                  <Pause className="w-7 h-7 sm:w-8 sm:h-8 text-deep-navy" />
                 ) : (
-                  <Play className="w-8 h-8 text-deep-navy ml-1" />
+                  <Play className="w-7 h-7 sm:w-8 sm:h-8 text-deep-navy ml-0.5" />
                 )}
               </button>
-              <div>
-                <p className="font-serif font-semibold text-light-blue">{story.title}</p>
-                <div className="flex items-center gap-3 text-sm text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
+              <div className="min-w-0 flex-1">
+                <p className="font-serif font-semibold text-light-blue truncate">{story.title}</p>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400">
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     {formatTime(currentTimeSeconds)} / {formatTime(displayDuration)}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-1 sm:gap-2">
               <button 
+                type="button"
                 onClick={() => setIsMuted(!isMuted)}
-                className="p-2 rounded-full hover:bg-card-border transition-colors"
+                className="p-2.5 rounded-full active:bg-card-border transition-colors touch-target"
               >
                 {isMuted ? (
                   <VolumeX className="w-5 h-5 text-gray-400" />
@@ -150,17 +152,18 @@ export const StoryPlayer = () => {
                 )}
               </button>
               <button 
+                type="button"
                 onClick={() => {
                   if (isFavorite) removeStory(story.id);
                   else addStory(story);
                 }}
-                className={`p-2 rounded-full transition-colors ${
-                  isFavorite ? 'bg-red-500/20 text-red-500' : 'hover:bg-card-border text-gray-400'
+                className={`p-2.5 rounded-full transition-colors touch-target ${
+                  isFavorite ? 'bg-red-500/20 text-red-500' : 'active:bg-card-border text-gray-400'
                 }`}
               >
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
-              <button className="p-2 rounded-full hover:bg-card-border text-gray-400 transition-colors">
+              <button type="button" className="p-2.5 rounded-full active:bg-card-border text-gray-400 transition-colors touch-target">
                 <Share2 className="w-5 h-5" />
               </button>
             </div>
@@ -169,35 +172,36 @@ export const StoryPlayer = () => {
           <div 
             ref={progressRef}
             onClick={handleProgressClick}
-            className="relative h-2 bg-card-border rounded-full cursor-pointer mb-4 group"
+            className="relative h-2 bg-card-border rounded-full cursor-pointer mt-4 group touch-target"
           >
             <div 
               className="absolute top-0 left-0 h-full bg-gradient-to-r from-gold to-amber rounded-full transition-all duration-300"
               style={{ width: `${progressPercent}%` }}
             />
             <div 
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-gold rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-gold rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
               style={{ left: `calc(${progressPercent}% - 8px)` }}
             />
           </div>
         </div>
 
-        <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-6">
-          <div className="px-6 py-4 border-b border-card-border flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-gold" />
+        <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-4 sm:mb-6">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-card-border flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <User className="w-5 h-5 text-gold shrink-0" />
               <span className="font-serif font-semibold text-light-blue">选择旅伴</span>
             </div>
             <button 
+              type="button"
               onClick={() => navigate(`/companions?storyId=${story.id}`)}
-              className="text-sm text-gold hover:text-amber transition-colors flex items-center gap-1"
+              className="text-sm text-gold active:text-amber transition-colors flex items-center gap-1 shrink-0 touch-target"
             >
               更多旅伴
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-4">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 sm:p-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {story.narrators.map((narrator) => {
                 const companion = companions.find((c) => c.id === narrator.companionId);
                 const isActive = currentCompanionId === narrator.companionId;
@@ -205,40 +209,41 @@ export const StoryPlayer = () => {
                 return (
                   <button
                     key={narrator.companionId}
+                    type="button"
                     onClick={() => handleSwitchCompanion(narrator.companionId)}
-                    className={`p-3 rounded-xl border transition-all duration-300 text-left ${
+                    className={`p-2.5 sm:p-3 rounded-xl border transition-all duration-300 text-left min-w-0 ${
                       isActive 
                         ? 'border-gold bg-gold/10' 
-                        : 'border-card-border hover:border-gold/50 bg-card-bg/50'
+                        : 'border-card-border active:border-gold/50 bg-card-bg/50'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="relative shrink-0">
                         <img 
                           src={companion?.avatar}
                           alt={companion?.name}
-                          className={`w-10 h-10 rounded-full object-cover ${
-                            isActive ? 'ring-2 ring-gold ring-offset-2 ring-offset-card-bg' : ''
+                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ${
+                            isActive ? 'ring-2 ring-gold ring-offset-1 sm:ring-offset-2 ring-offset-card-bg' : ''
                           }`}
                         />
                         {isActive && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gold rounded-full flex items-center justify-center">
-                            <Check className="w-3 h-3 text-deep-navy" />
+                          <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-gold rounded-full flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-deep-navy" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-light-blue text-sm">{companion?.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{narrator.styleNote}</p>
+                        <p className="font-medium text-light-blue text-xs sm:text-sm truncate">{companion?.name}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 truncate">{narrator.styleNote}</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                    <div className="flex items-center justify-between mt-2 text-[10px] sm:text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {formatTime(narrator.duration)}
                       </span>
                       {isActive && (
-                        <span className="px-2 py-0.5 bg-amber/20 text-amber rounded-full">
+                        <span className="px-1.5 sm:px-2 py-0.5 bg-amber/20 text-amber rounded-full shrink-0">
                           讲解中
                         </span>
                       )}
@@ -250,10 +255,11 @@ export const StoryPlayer = () => {
           </div>
         </div>
 
-        <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-6">
+        <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-4 sm:mb-6">
           <button 
+            type="button"
             onClick={() => setShowContent(!showContent)}
-            className="w-full px-6 py-4 flex items-center justify-between hover:bg-card-border/50 transition-colors"
+            className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between active:bg-card-border/50 transition-colors touch-target"
           >
             <span className="font-serif font-semibold text-light-blue">故事内容</span>
             {showContent ? (
@@ -263,20 +269,20 @@ export const StoryPlayer = () => {
             )}
           </button>
           {showContent && (
-            <div className="px-6 pb-6">
-              <p className="text-gray-400 leading-relaxed">
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+              <p className="text-sm text-gray-400 leading-relaxed">
                 {currentNarrator?.content || story.narrators[0]?.content}
               </p>
             </div>
           )}
         </div>
 
-        <section className="mb-6">
-          <h3 className="font-serif font-bold text-light-blue mb-4 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-gold" />
+        <section className="mb-4">
+          <h3 className="font-serif font-bold text-light-blue mb-3 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-gold shrink-0" />
             附近更多故事
           </h3>
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="horizontal-scroll">
             {story.id !== 'west-lake-bridge' && 
               <StoryCard key="west-lake-bridge" story={{
                 id: 'west-lake-bridge',
@@ -289,27 +295,28 @@ export const StoryPlayer = () => {
                 defaultCompanionId: 'lin-huiyin',
                 tags: ['爱情', '传说', '西湖'],
                 narrators: []
-              }} compact />}
+              }} compact layout="scroll" />}
           </div>
         </section>
 
         {isPlaying && (
-          <div className="fixed bottom-24 left-4 right-4 bg-card-bg/95 backdrop-blur-md rounded-2xl p-4 border border-card-border shadow-lg">
-            <div className="flex items-center gap-3">
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[calc(var(--app-max-width)-2rem)] bg-card-bg/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-card-border shadow-lg pb-safe">
+            <div className="flex items-center gap-3 min-w-0">
               <img 
                 src={story.coverImage}
                 alt={story.title}
-                className="w-12 h-12 rounded-lg object-cover"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="font-serif font-semibold text-light-blue truncate">{story.title}</p>
-                <p className="text-sm text-gray-400">
-                  {currentCompanion?.name} · {formatTime(progress)} / {formatTime(displayDuration)}
+                <p className="font-serif font-semibold text-light-blue truncate text-sm sm:text-base">{story.title}</p>
+                <p className="text-xs sm:text-sm text-gray-400 truncate">
+                  {currentCompanion?.name} · {formatTime(currentTimeSeconds)} / {formatTime(displayDuration)}
                 </p>
               </div>
               <button 
+                type="button"
                 onClick={toggle}
-                className="w-10 h-10 rounded-full bg-gold flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-gold flex items-center justify-center shrink-0 touch-target"
               >
                 {isPlaying ? (
                   <Pause className="w-5 h-5 text-deep-navy" />
@@ -320,7 +327,7 @@ export const StoryPlayer = () => {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </PageContent>
+    </PageShell>
   );
 };

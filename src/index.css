@@ -12,16 +12,28 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --app-max-width: 430px;
+  --header-height: 3.5rem;
+  --nav-height: 4.25rem;
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background-color: #0A1628;
   color: #E8F4F8;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -44,28 +56,76 @@ body {
   background: #D4AF37;
 }
 
+@layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-header {
+    padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  }
+
+  .pb-nav {
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-nav-offset {
+    bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 @layer components {
+  .app-shell {
+    @apply mx-auto w-full max-w-app min-h-screen bg-deep-navy relative;
+  }
+
   .gold-button {
-    @apply px-6 py-3 bg-gradient-to-r from-gold to-amber text-deep-navy font-semibold rounded-full hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 transform hover:scale-105;
+    @apply w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-gold to-amber text-deep-navy font-semibold rounded-full hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 active:scale-95 justify-center;
   }
   
   .gold-outline-button {
-    @apply px-6 py-3 border-2 border-gold text-gold rounded-full hover:bg-gold hover:text-deep-navy transition-all duration-300;
+    @apply w-full sm:w-auto px-5 py-2.5 border-2 border-gold text-gold rounded-full hover:bg-gold hover:text-deep-navy transition-all duration-300 active:scale-95 justify-center;
   }
   
   .story-card {
-    @apply bg-card-bg rounded-2xl overflow-hidden border border-card-border hover:border-gold/50 transition-all duration-300 cursor-pointer;
+    @apply bg-card-bg rounded-2xl overflow-hidden border border-card-border hover:border-gold/50 transition-all duration-300 cursor-pointer min-w-0;
   }
   
   .companion-card {
-    @apply bg-card-bg rounded-2xl p-4 border border-card-border hover:border-gold/50 transition-all duration-300 cursor-pointer text-center;
+    @apply bg-card-bg rounded-2xl p-3 sm:p-4 border border-card-border hover:border-gold/50 transition-all duration-300 cursor-pointer text-center min-w-0;
   }
   
   .route-card {
-    @apply bg-card-bg rounded-2xl p-5 border border-card-border hover:border-gold/50 transition-all duration-300 cursor-pointer;
+    @apply bg-card-bg rounded-2xl p-4 sm:p-5 border border-card-border hover:border-gold/50 transition-all duration-300 cursor-pointer;
   }
   
   .text-gradient {
     @apply bg-gradient-to-r from-gold to-amber bg-clip-text text-transparent;
+  }
+
+  .horizontal-scroll {
+    @apply flex gap-3 overflow-x-auto pb-2 hide-scrollbar snap-x snap-mandatory;
+  }
+
+  .horizontal-scroll > * {
+    @apply snap-start;
   }
 }

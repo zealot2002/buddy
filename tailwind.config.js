@@ -6,8 +6,16 @@ export default {
   theme: {
     container: {
       center: true,
+      padding: "1rem",
     },
     extend: {
+      maxWidth: {
+        app: "430px",
+      },
+      spacing: {
+        header: "3.5rem",
+        nav: "4.25rem",
+      },
       colors: {
         'deep-navy': '#0A1628',
         'gold': '#D4AF37',

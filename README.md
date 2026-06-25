@@ -135,7 +135,7 @@
 ├── functions/                    # Cloudflare Pages Functions
 │   └── api/[[path]].js           # API 入口（处理所有 /api/* 请求）
 ├── public/                       # 静态资源
-│   ├── _routes.json              # Cloudflare 路由配置（排除 /api/*）
+│   ├── _routes.json              # Cloudflare 路由配置（SPA 回退 + 静态资源排除）
 │   ├── _headers                  # HTTP 安全头配置
 │   └── favicon.svg               # 网站图标
 ├── src/                          # 前端代码
@@ -284,8 +284,29 @@ npm run lint
 |-------|------|
 | 构建命令 | `npm run build` |
 | 构建输出目录 | `dist` |
-| API 处理 | Cloudflare Pages Functions |
-| 路由配置 | `public/_routes.json` 排除 `/api/*` |
+| API 处理 | `functions/api/[[path]].js`（Pages Functions） |
+| SPA 回退 | `public/_routes.json` 将 404 映射到 `index.html` |
+
+### `_routes.json` 说明
+
+`exclude` 表示**不执行** Pages Functions 的路径。若将 `/api/*` 写入 `exclude`，API 请求会被当作静态资源处理，找不到文件时触发 404 并回退到 `index.html`，前端解析 JSON 会报错 `Unexpected token '<'`。
+
+当前正确配置：
+
+```json
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": ["/assets/*", "/favicon.svg"],
+  "error_pages": {
+    "404": "/index.html"
+  }
+}
+```
+
+- `/api/*` 由 `functions/api/[[path]].js` 处理，**不要**放入 `exclude`
+- 仅排除静态资源路径，避免不必要的 Function 调用
+- 非 API 路由 404 时回退到 `index.html`，支持 React Router 客户端路由
 
 ### 部署配置文件
 
@@ -303,7 +324,10 @@ npm run lint
 | `/api/stories/nearby` | GET | 获取附近故事 |
 | `/api/companions` | GET | 获取所有旅伴 |
 | `/api/companions/:id` | GET | 获取单个旅伴 |
-| `/api/tts` | POST | 语音合成 |
+| `/api/routes` | GET | 获取所有路线 |
+| `/api/routes/:id` | GET | 获取单个路线 |
+| `/api/tts` | GET | 语音合成（`?text=&lang=`） |
+| `/api/health` | GET | 健康检查 |
 
 ---
 
@@ -561,7 +585,7 @@ interface Companion {
 | 地图瓦片加载失败 | OpenStreetMap 瓦片加载被拦截 | 切换到 CartoCDN / Yandex 地图服务 |
 | 故事无法播放 | Web Speech API 兼容性问题 | 使用 HTML5 Audio 播放 TTS 音频文件 |
 | 进度显示错误 | 进度单位不一致（百分比 vs 秒） | 统一进度管理为百分比 |
-| Cloudflare 部署后无热门故事 | API 请求被当作静态资源 | 修改 `_routes.json` 排除 `/api/*`，使用 Pages Functions |
+| Cloudflare 部署后 API 返回 HTML | `_routes.json` 将 `/api/*` 误放入 `exclude`，Functions 未执行，404 回退到 `index.html` | 从 `exclude` 中移除 `/api/*`，仅排除 `/assets/*` 等静态资源 |
 | 分类过滤错误 | Story 类型缺少 `category` 字段 | 使用 `tags` 字段进行过滤 |
 
 ---
@@ -574,7 +598,7 @@ interface Companion {
 | v1.1.0 | - | 新增：故事列表页、地图选址页 |
 | v1.2.0 | - | 优化：底部导航改为首页/我的、旅伴卡片优化 |
 | v1.3.0 | - | 部署：Cloudflare Pages 部署配置完成 |
-| v1.4.0 | - | 修复：API 路由问题、播放器重构、文档完善 |
+| v1.4.0 | 2026-06 | 修复：Cloudflare `_routes.json` 配置、播放器重构、文档完善 |
 
 ---
 

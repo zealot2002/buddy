@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Home } from "@/pages/Home";
 import { Companions } from "@/pages/Companions";
 import { Favorites } from "@/pages/Favorites";
@@ -8,11 +8,15 @@ import { MapPage } from "@/pages/MapPage";
 import { StoriesPage } from "@/pages/StoriesPage";
 import { BottomNav } from "@/components/BottomNav";
 
+const MAIN_TAB_PATHS = ['/', '/profile'];
+
 const MainApp = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const showBottomNav = MAIN_TAB_PATHS.includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-deep-navy">
+    <div className="app-shell">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/stories" element={<StoriesPage />} />
@@ -22,7 +26,7 @@ const MainApp = () => {
         <Route path="/story/:id" element={<StoryPlayer />} />
         <Route path="/map" element={<MapPage />} />
       </Routes>
-      <BottomNav onNavigate={navigate} />
+      {showBottomNav && <BottomNav onNavigate={navigate} />}
     </div>
   );
 };
