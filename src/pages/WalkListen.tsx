@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, MapPin, RefreshCw } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
 import { fetchWalkTap, fetchWalkOffsite, fetchWalkAreaStatus, useWalkGeofence } from '../hooks/useWalkGeofence';
@@ -98,6 +98,12 @@ export const WalkListen = () => {
   }, [setLocation, refreshAreaStatus]);
 
   useEffect(() => {
+    if (!isLocating) {
+      refreshAreaStatus(lat, lng);
+    }
+  }, [lat, lng, isLocating, companionId, refreshAreaStatus]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
@@ -139,8 +145,7 @@ export const WalkListen = () => {
     }
   };
 
-  const handleStatusLightTap = async (event: MouseEvent) => {
-    event.stopPropagation();
+  const handleStatusLightTap = async () => {
     if (isFetching || !companion || hasAreaContent) return;
 
     setIsFetching(true);
@@ -287,40 +292,53 @@ export const WalkListen = () => {
 
         <div className="px-4 py-3 pb-safe">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowCompanionPicker((open) => !open)}
-              className="flex min-w-0 flex-1 touch-target items-center gap-2"
-            >
-              <div className="relative shrink-0">
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={handleCompanionTap}
+                disabled={!hasAreaContent || isFetching}
+                aria-label={hasAreaContent ? '听延伸解读' : '当前区域暂无讲解'}
+                className={cn(
+                  'block rounded-md transition-all',
+                  hasAreaContent && !isFetching && 'active:scale-95',
+                  (!hasAreaContent || isFetching) && 'cursor-default opacity-90',
+                )}
+              >
                 <img
                   src={getCompanionAvatar(companionId)}
                   alt={companion?.name || '旅伴'}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleCompanionTap();
-                  }}
                   className={cn(
-                    'h-11 w-11 rounded-md border-2 bg-white object-cover transition-all',
-                    isFetching ? 'scale-95 opacity-60' : 'border-transparent active:scale-95',
-                    hasAreaContent && !isFetching && 'active:border-gold cursor-pointer',
-                    !hasAreaContent && 'cursor-default',
+                    'h-11 w-11 rounded-md border-2 bg-white object-cover',
+                    isFetching && 'opacity-60',
+                    hasAreaContent ? 'border-emerald-400' : 'border-transparent',
                   )}
                 />
+              </button>
+              {hasAreaContent ? (
+                <span
+                  className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white shadow"
+                  title="当前区域有讲解"
+                />
+              ) : (
                 <button
                   type="button"
                   onClick={handleStatusLightTap}
-                  disabled={hasAreaContent || isFetching}
-                  aria-label={hasAreaContent ? '当前区域有讲解' : '点击听调皮话'}
+                  disabled={isFetching}
+                  aria-label="点击听调皮话"
                   className={cn(
-                    'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white shadow-sm',
-                    hasAreaContent
-                      ? 'bg-emerald-500'
-                      : 'bg-gray-400 active:scale-110 disabled:opacity-60',
+                    'absolute -bottom-0.5 -right-0.5 z-10 h-3.5 w-3.5 rounded-full bg-gray-400 ring-2 ring-white shadow',
+                    'active:scale-110 disabled:opacity-50',
                   )}
                 />
-              </div>
-              <div className="min-w-0 text-left">
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCompanionPicker((open) => !open)}
+              className="flex min-w-0 flex-1 touch-target items-center gap-2 text-left"
+            >
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
                 <p className="truncate text-xs text-gray-500">
                   {isFetching
@@ -342,12 +360,16 @@ export const WalkListen = () => {
           <div className="mt-3 flex items-center gap-2 rounded-full border border-black/5 bg-white px-3 py-2.5">
             <span
               className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
+                'h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow',
                 hasAreaContent ? 'bg-emerald-500' : 'bg-gray-400',
               )}
             />
-            <span className="flex-1 text-sm text-gray-400">
-              {hasAreaContent ? '当前区域有讲解，旅伴随时可能开口' : '暂无区域讲解，点灰灯闲聊'}
+            <span className="flex-1 text-sm text-gray-500">
+              {isLocating
+                ? '定位中，正在检测区域讲解…'
+                : hasAreaContent
+                  ? `当前区域有讲解${nearestFence?.label ? ` · ${nearestFence.label}` : ''}`
+                  : '暂无区域讲解，点头像旁灰灯闲聊'}
             </span>
           </div>
         </div>
