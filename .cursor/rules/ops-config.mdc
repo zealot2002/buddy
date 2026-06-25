@@ -1,0 +1,29 @@
+---
+description: 运营策略配置 — 修改参数请走 api/config，勿散落硬编码
+globs: api/config/**,api/data/walk-snippets.ts,src/hooks/useWalkGeofence.ts
+alwaysApply: false
+---
+
+# 运营配置规范
+
+## 单一数据源
+
+所有可运营调整的参数收敛在 `api/config/`：
+
+| 文件 | 内容 |
+|------|------|
+| `walk-config.ts` | 围栏半径、主动触发冷却/位移、定位参数、nearby 上限 |
+| `speech-config.ts` | TTS 时长估算 |
+| `index.ts` | `APP_CONFIG` 聚合导出 |
+
+## 修改流程
+
+1. 只改 `api/config/*.ts` 中的常量
+2. 运行 `npm run sync:functions-data` 同步至 `functions/api/stories-data.json`
+3. 客户端/服务端通过 import 或 `GET /api/config/walk` 读取
+
+## 后续运营端
+
+- `GET /api/config` — 全量配置（管理平台）
+- `GET /api/config/walk` — 边走边听策略（客户端可热更新）
+- 写入 API 待运营端实现；结构以 `AppConfig` / `WalkListenConfig` 类型为准

@@ -1,4 +1,5 @@
 import { bd09ToGcj02, gcj02OffsetToWgs84, toWgs84, type CoordSystem } from './coord-utils.js';
+import { getFenceRadiusMeters } from '../config/walk-config.js';
 
 export type WalkFenceCoordSource =
   | 'wgs84-osm'
@@ -41,12 +42,13 @@ function buildSanhaoFencesFromAnchor(): WalkFenceDefinition[] {
   const anchor = SANHAO_WGS84_ANCHOR;
   const anchorGcj = bd09AsGcj02(SANHAO_BD09.bainaohui.lat, SANHAO_BD09.bainaohui.lng);
 
+  const sanhaoRadius = getFenceRadiusMeters('shenyang-sanhao');
   const points = [
-    { key: 'bainaohui', id: 'walk-sy-bainaohui', radiusMeters: 80 },
-    { key: 'huaqiang', id: 'walk-sy-huaqiang', radiusMeters: 80 },
-    { key: 'weiyong', id: 'walk-sy-weiyong', radiusMeters: 80 },
-    { key: 'dongruan', id: 'walk-sy-dongruan', radiusMeters: 80 },
-    { key: 'wencui', id: 'walk-sy-sanhao-wencui', radiusMeters: 80 },
+    { key: 'bainaohui', id: 'walk-sy-bainaohui', radiusMeters: sanhaoRadius },
+    { key: 'huaqiang', id: 'walk-sy-huaqiang', radiusMeters: sanhaoRadius },
+    { key: 'weiyong', id: 'walk-sy-weiyong', radiusMeters: sanhaoRadius },
+    { key: 'dongruan', id: 'walk-sy-dongruan', radiusMeters: sanhaoRadius },
+    { key: 'wencui', id: 'walk-sy-sanhao-wencui', radiusMeters: sanhaoRadius },
   ] as const;
 
   return points.map(({ key, id, radiusMeters }) => {

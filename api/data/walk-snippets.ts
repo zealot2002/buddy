@@ -8,6 +8,7 @@ import {
 } from './narrations.js';
 import { SHENYANG_SANHAO_NARRATIONS } from './shenyang-sanhao-narrations.js';
 import { SHENYANG_SANHAO_FENCES, WALK_FENCE_LABELS } from './walk-fence-registry.js';
+import { getFenceRadiusMeters, WALK_LISTEN_CONFIG } from '../config/walk-config.js';
 
 export interface WalkScriptVariant {
   versionId: string;
@@ -129,7 +130,7 @@ export const walkSnippets: WalkSnippet[] = [
     location: {
       lat: fence.lat,
       lng: fence.lng,
-      radiusMeters: 30,
+      radiusMeters: getFenceRadiusMeters('forbidden-city'),
     },
     scripts: buildScriptsForFence(FORBIDDEN_CITY_NARRATIONS, index, FORBIDDEN_FENCES.length),
   })),
@@ -139,7 +140,7 @@ export const walkSnippets: WalkSnippet[] = [
     location: {
       lat: fence.lat,
       lng: fence.lng,
-      radiusMeters: 35,
+      radiusMeters: getFenceRadiusMeters('summer-palace'),
     },
     scripts: buildScriptsForFence(SUMMER_PALACE_NARRATIONS, index, SUMMER_FENCES.length),
   })),
@@ -230,11 +231,11 @@ export function haversineMeters(
   return 2 * earthRadius * Math.asin(Math.sqrt(a));
 }
 
-export function getNearbyWalkMetas(lat: number, lng: number, limit = 20): WalkSnippetMeta[] {
+export function getNearbyWalkMetas(lat: number, lng: number, limit = WALK_LISTEN_CONFIG.nearby.limit): WalkSnippetMeta[] {
   return getNearbyWalkStatus(lat, lng, limit).map(({ distanceMeters: _d, inside: _i, ...meta }) => meta);
 }
 
-export function getNearbyWalkStatus(lat: number, lng: number, limit = 20): WalkNearbyStatus[] {
+export function getNearbyWalkStatus(lat: number, lng: number, limit = WALK_LISTEN_CONFIG.nearby.limit): WalkNearbyStatus[] {
   return walkSnippets
     .map((snippet) => {
       const distanceMeters = haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng);

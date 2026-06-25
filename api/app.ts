@@ -12,6 +12,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { createProxyMiddleware } from 'http-proxy-middleware'
+import configRoutes from './routes/config.js'
 import authRoutes from './routes/auth.js'
 import storiesRoutes from './routes/stories.js'
 import walkRoutes from './routes/walk.js'
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 /**
  * API Routes
  */
+app.use('/api/config', configRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/stories', storiesRoutes)
 app.use('/api/walk', walkRoutes)

@@ -1,5 +1,7 @@
 /** 按地点 + 旅伴预制的沉浸式讲解稿 */
 
+import { estimateSpeechDurationFromConfig } from '../config/speech-config.js';
+
 export interface NarrationScript {
   versionId: string;
   content: string;
@@ -88,7 +90,7 @@ export function normalizeCompanionId(companionId: string): string {
 }
 
 export function estimateSpeechDuration(text: string): number {
-  return Math.max(45, Math.ceil(text.length / 4.5));
+  return estimateSpeechDurationFromConfig(text);
 }
 
 export function pickRandomScript(scripts: NarrationScript[]): NarrationScript {

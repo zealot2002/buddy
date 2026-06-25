@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
+import {
+  canAutoTriggerWalk,
+  WALK_LISTEN_CONFIG,
+  type WalkAutoTriggerGate,
+} from '../../api/config/walk-config.js';
 import { haversineMeters } from '../../api/data/walk-snippets.js';
 import type { WalkSnippetMeta } from '../../api/data/walk-snippets.js';
 
@@ -47,6 +52,7 @@ export function useWalkGeofence({
 }: UseWalkGeofenceOptions) {
   const triggeredRef = useRef<Set<string>>(new Set());
   const metasRef = useRef<WalkSnippetMeta[]>([]);
+  const autoTriggerGateRef = useRef<WalkAutoTriggerGate | null>(null);
   const onTriggerRef = useRef(onTrigger);
 
   useEffect(() => {
@@ -66,21 +72,33 @@ export function useWalkGeofence({
         }
       }
 
-      for (const meta of metasRef.current) {
-        if (triggeredRef.current.has(meta.id)) continue;
+      const candidates = metasRef.current
+        .map((meta) => ({
+          meta,
+          distance: haversineMeters(currentLat, currentLng, meta.lat, meta.lng),
+        }))
+        .filter(({ meta, distance }) => distance <= meta.radius && !triggeredRef.current.has(meta.id))
+        .sort((a, b) => a.distance - b.distance);
 
-        const distance = haversineMeters(currentLat, currentLng, meta.lat, meta.lng);
-        if (distance > meta.radius) continue;
+      if (!candidates.length) return;
 
+      if (!canAutoTriggerWalk(autoTriggerGateRef.current, currentLat, currentLng, haversineMeters)) {
+        return;
+      }
+
+      const { meta } = candidates[0];
+
+      try {
+        const payload = await fetchWalkPlay(meta.id, companionId, 'auto');
         triggeredRef.current.add(meta.id);
-
-        try {
-          const payload = await fetchWalkPlay(meta.id, companionId, 'auto');
-          onTriggerRef.current(payload, meta);
-        } catch (error) {
-          console.error('joyjoy walk play fetch failed:', error);
-          triggeredRef.current.delete(meta.id);
-        }
+        autoTriggerGateRef.current = {
+          at: Date.now(),
+          lat: currentLat,
+          lng: currentLng,
+        };
+        onTriggerRef.current(payload, meta);
+      } catch (error) {
+        console.error('joyjoy walk play fetch failed:', error);
       }
     },
     [enabled, companionId],
@@ -91,6 +109,7 @@ export function useWalkGeofence({
 
     triggeredRef.current = new Set();
     metasRef.current = [];
+    autoTriggerGateRef.current = null;
 
     checkGeofences(lat, lng);
 
@@ -103,7 +122,7 @@ export function useWalkGeofence({
       (error) => {
         console.error('joyjoy geolocation watch failed:', error);
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+      { enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy, maximumAge: WALK_LISTEN_CONFIG.geolocation.maximumAgeMs, timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs },
     );
 
     return () => {
@@ -114,6 +133,7 @@ export function useWalkGeofence({
   const resetSession = useCallback(() => {
     triggeredRef.current = new Set();
     metasRef.current = [];
+    autoTriggerGateRef.current = null;
   }, []);
 
   return { resetSession };

@@ -1,6 +1,16 @@
 import data from './stories-data.json';
 
-const { stories, companions, walkSnippets = [], walkOffsiteChatter = {} } = data;
+const { stories, companions, walkSnippets = [], walkOffsiteChatter = {}, appConfig = {} } = data;
+
+const speechConfig = appConfig.speech || { minDurationSeconds: 45, charsPerSecond: 4.5 };
+const walkConfig = appConfig.walk || { nearby: { limit: 20 } };
+
+function estimateSpeechDuration(text) {
+  return Math.max(
+    speechConfig.minDurationSeconds,
+    Math.ceil((text?.length || 0) / speechConfig.charsPerSecond),
+  );
+}
 
 const STORY_ID_ALIASES = {
   'forbidden-city': 'forbidden-city-hall',
@@ -50,7 +60,7 @@ function resolveWalkPlay(snippetId, companionId, trigger = 'auto') {
   if (!variants?.length) return null;
 
   const picked = pickRandomVariant(variants);
-  const duration = Math.max(45, Math.ceil((picked.content?.length || 0) / 4.5));
+  const duration = estimateSpeechDuration(picked.content);
 
   return {
     snippetId,
@@ -67,7 +77,7 @@ function resolveOffsiteChatter(companionId) {
   const normalizedId = normalizeCompanionId(companionId);
   const scripts = walkOffsiteChatter[normalizedId] || walkOffsiteChatter['su-dongpo'] || [];
   const picked = pickRandomVariant(scripts);
-  const duration = Math.max(45, Math.ceil((picked.content?.length || 0) / 4.5));
+  const duration = estimateSpeechDuration(picked.content);
 
   return {
     snippetId: 'offsite-chatter',
@@ -80,7 +90,7 @@ function resolveOffsiteChatter(companionId) {
   };
 }
 
-function getNearbyWalkMetas(lat, lng, limit = 20) {
+function getNearbyWalkMetas(lat, lng, limit = walkConfig.nearby?.limit ?? 20) {
   return walkSnippets
     .map((snippet) => {
       const distanceMeters = Math.round(
@@ -124,6 +134,17 @@ export async function onRequest(context) {
 
   if (method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (path.startsWith('/api/config')) {
+    if (method === 'GET') {
+      if (path === '/api/config/walk') {
+        return Response.json(appConfig.walk || {}, { headers: corsHeaders });
+      }
+      if (path === '/api/config') {
+        return Response.json(appConfig, { headers: corsHeaders });
+      }
+    }
   }
 
   if (path.startsWith('/api/walk')) {

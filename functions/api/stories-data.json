@@ -1628,5 +1628,35 @@
         "content": "您瞅瞅这周围，连个古物毛都没有。不过我看着您这双运动鞋倒挺有意思——它是哪朝的文物？"
       }
     ]
+  },
+  "appConfig": {
+    "version": 1,
+    "walk": {
+      "version": 1,
+      "autoTrigger": {
+        "cooldownMs": 120000,
+        "minDistanceMeters": 500
+      },
+      "geolocation": {
+        "enableHighAccuracy": true,
+        "maximumAgeMs": 5000,
+        "timeoutMs": 15000
+      },
+      "fence": {
+        "byAreaTag": {
+          "forbidden-city": 30,
+          "summer-palace": 35,
+          "shenyang-sanhao": 80
+        },
+        "defaultMeters": 50
+      },
+      "nearby": {
+        "limit": 20
+      }
+    },
+    "speech": {
+      "minDurationSeconds": 45,
+      "charsPerSecond": 4.5
+    }
   }
 }

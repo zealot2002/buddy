@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, MapPin, RefreshCw } from 'lucide-react';
+import { ChevronDown, MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
 import { fetchWalkTap, fetchWalkOffsite, fetchWalkAreaStatus, useWalkGeofence } from '../hooks/useWalkGeofence';
+import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
@@ -22,7 +23,7 @@ export const WalkListen = () => {
   const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
   const { playWalk } = usePlayerStore();
-  const { messages, addMessage, clearMessages } = useWalkChatStore();
+  const { messages, addMessage } = useWalkChatStore();
 
   const [companionId, setCompanionId] = useState(defaultCompanionId);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
@@ -73,7 +74,7 @@ export const WalkListen = () => {
         setError('定位失败，将使用默认位置');
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 15000 },
+      { enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy, timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs },
     );
   }, [setLocation, setLocating, setError, refreshAreaStatus]);
 
@@ -89,7 +90,7 @@ export const WalkListen = () => {
       (error) => {
         console.error('joyjoy geolocation watch failed:', error);
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+      { enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy, maximumAge: WALK_LISTEN_CONFIG.geolocation.maximumAgeMs, timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs },
     );
 
     return () => {
@@ -118,7 +119,7 @@ export const WalkListen = () => {
     [addMessage, playWalk, companionId],
   );
 
-  const { resetSession } = useWalkGeofence({
+  useWalkGeofence({
     enabled: true,
     lat,
     lng,
@@ -164,15 +165,6 @@ export const WalkListen = () => {
     }
   };
 
-  const handleResetSession = () => {
-    clearMessages();
-    resetSession();
-    addMessage({
-      role: 'system',
-      content: '新的漫步开始了。点我的头像，或在故事发生的地方，我会主动跟你聊。',
-    });
-  };
-
   useEffect(() => {
     if (messages.length === 0) {
       addMessage({
@@ -195,6 +187,18 @@ export const WalkListen = () => {
     };
   }, []);
 
+  const areaStatusText = isLocating
+    ? '定位中…'
+    : hasAreaContent
+      ? `有讲解${nearestFence?.label ? ` · ${nearestFence.label}` : ''}`
+      : '暂无讲解';
+
+  const companionHint = isFetching
+    ? '正在组织语言…'
+    : hasAreaContent
+      ? '点头像听延伸解读'
+      : '点灰灯听调皮话';
+
   return (
     <div
       className="fixed left-1/2 z-10 flex w-full max-w-app -translate-x-1/2 flex-col overflow-hidden bg-[#ededed]"
@@ -203,29 +207,125 @@ export const WalkListen = () => {
         bottom: 'calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      <header className="z-30 shrink-0 border-b border-black/5 bg-[#ededed] pt-safe">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div>
+      <header className="relative z-30 shrink-0 border-b border-black/5 bg-[#ededed] pt-safe">
+        <div className="flex items-start justify-between gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
             <h1 className="font-serif text-lg font-bold text-gray-900">边走边听</h1>
             <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-              <MapPin className="h-3 w-3" />
-              {isLocating
-                ? '定位中…'
-                : nearestFence
-                  ? nearestFence.inside
-                    ? `已在「${nearestFence.label ?? nearestFence.id}」围栏内`
-                    : `距「${nearestFence.label ?? nearestFence.id}」${nearestFence.distanceMeters}m`
-                  : `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">
+                {isLocating
+                  ? '定位中…'
+                  : nearestFence
+                    ? nearestFence.inside
+                      ? `已在「${nearestFence.label ?? nearestFence.id}」`
+                      : `距「${nearestFence.label ?? nearestFence.id}」${nearestFence.distanceMeters}m`
+                    : `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
+              </span>
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleResetSession}
-            className="touch-target rounded-full p-2 text-gray-600 active:bg-black/5"
-            aria-label="重新开始"
-          >
-            <RefreshCw className="h-5 w-5" />
-          </button>
+
+          <div className="relative flex max-w-[52%] shrink-0 flex-col items-end gap-1.5">
+            {showCompanionPicker && (
+              <div className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,280px)] rounded-xl border border-black/5 bg-white p-3 shadow-lg">
+                <div className="grid grid-cols-4 gap-2">
+                  {companions.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setCompanionId(item.id);
+                        setShowCompanionPicker(false);
+                      }}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-xl p-2 touch-target',
+                        companionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
+                      )}
+                    >
+                      <img src={getCompanionAvatar(item.id)} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
+                      <span className="w-full truncate text-center text-[10px] text-gray-700">{item.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCompanionTap}
+                  disabled={!hasAreaContent || isFetching}
+                  aria-label={hasAreaContent ? '听延伸解读' : '当前区域暂无讲解'}
+                  className={cn(
+                    'block rounded-md transition-all',
+                    hasAreaContent && !isFetching && 'active:scale-95',
+                    (!hasAreaContent || isFetching) && 'cursor-default opacity-90',
+                  )}
+                >
+                  <img
+                    src={getCompanionAvatar(companionId)}
+                    alt={companion?.name || '旅伴'}
+                    className={cn(
+                      'h-10 w-10 rounded-md border-2 bg-white object-cover',
+                      isFetching && 'opacity-60',
+                      hasAreaContent ? 'border-emerald-400' : 'border-transparent',
+                    )}
+                  />
+                </button>
+                {hasAreaContent ? (
+                  <span
+                    className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white shadow"
+                    title="当前区域有讲解"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStatusLightTap}
+                    disabled={isFetching}
+                    aria-label="点击听调皮话"
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-gray-400 ring-2 ring-white shadow',
+                      'active:scale-110 disabled:opacity-50',
+                    )}
+                  />
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCompanionPicker((open) => !open)}
+                className="min-w-0 touch-target text-right"
+              >
+                <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
+                <p className="truncate text-[11px] text-gray-500">{companionHint}</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCompanionPicker((open) => !open)}
+                className="touch-target shrink-0 p-0.5"
+                aria-label="切换旅伴"
+              >
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 text-gray-400 transition-transform',
+                    showCompanionPicker && 'rotate-180',
+                  )}
+                />
+              </button>
+            </div>
+
+            <div className="flex max-w-full items-center gap-1.5 rounded-full border border-black/5 bg-white px-2.5 py-1">
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  hasAreaContent ? 'bg-emerald-500' : 'bg-gray-400',
+                )}
+              />
+              <span className="truncate text-[11px] text-gray-500">{areaStatusText}</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -264,116 +364,6 @@ export const WalkListen = () => {
           );
         })}
       </div>
-
-      <footer className="relative z-30 shrink-0 border-t border-black/5 bg-[#f7f7f7]">
-        {showCompanionPicker && (
-          <div className="absolute bottom-full left-0 right-0 max-h-[40vh] overflow-y-auto border-t border-black/5 bg-[#f7f7f7] px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-            <div className="grid grid-cols-4 gap-2">
-              {companions.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setCompanionId(item.id);
-                    setShowCompanionPicker(false);
-                  }}
-                  className={cn(
-                    'flex flex-col items-center gap-1 rounded-xl p-2 touch-target',
-                    companionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
-                  )}
-                >
-                  <img src={getCompanionAvatar(item.id)} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
-                  <span className="w-full truncate text-center text-[10px] text-gray-700">{item.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="px-4 py-3 pb-safe">
-          <div className="flex items-center gap-3">
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={handleCompanionTap}
-                disabled={!hasAreaContent || isFetching}
-                aria-label={hasAreaContent ? '听延伸解读' : '当前区域暂无讲解'}
-                className={cn(
-                  'block rounded-md transition-all',
-                  hasAreaContent && !isFetching && 'active:scale-95',
-                  (!hasAreaContent || isFetching) && 'cursor-default opacity-90',
-                )}
-              >
-                <img
-                  src={getCompanionAvatar(companionId)}
-                  alt={companion?.name || '旅伴'}
-                  className={cn(
-                    'h-11 w-11 rounded-md border-2 bg-white object-cover',
-                    isFetching && 'opacity-60',
-                    hasAreaContent ? 'border-emerald-400' : 'border-transparent',
-                  )}
-                />
-              </button>
-              {hasAreaContent ? (
-                <span
-                  className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white shadow"
-                  title="当前区域有讲解"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleStatusLightTap}
-                  disabled={isFetching}
-                  aria-label="点击听调皮话"
-                  className={cn(
-                    'absolute -bottom-0.5 -right-0.5 z-10 h-3.5 w-3.5 rounded-full bg-gray-400 ring-2 ring-white shadow',
-                    'active:scale-110 disabled:opacity-50',
-                  )}
-                />
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowCompanionPicker((open) => !open)}
-              className="flex min-w-0 flex-1 touch-target items-center gap-2 text-left"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
-                <p className="truncate text-xs text-gray-500">
-                  {isFetching
-                    ? '正在组织语言…'
-                    : hasAreaContent
-                      ? '点头像，听延伸解读'
-                      : '点灰灯，听调皮话'}
-                </p>
-              </div>
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 shrink-0 text-gray-400 transition-transform',
-                  showCompanionPicker && 'rotate-180',
-                )}
-              />
-            </button>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2 rounded-full border border-black/5 bg-white px-3 py-2.5">
-            <span
-              className={cn(
-                'h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow',
-                hasAreaContent ? 'bg-emerald-500' : 'bg-gray-400',
-              )}
-            />
-            <span className="flex-1 text-sm text-gray-500">
-              {isLocating
-                ? '定位中，正在检测区域讲解…'
-                : hasAreaContent
-                  ? `当前区域有讲解${nearestFence?.label ? ` · ${nearestFence.label}` : ''}`
-                  : '暂无区域讲解，点头像旁灰灯闲聊'}
-            </span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

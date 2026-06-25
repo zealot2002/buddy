@@ -1,4 +1,5 @@
 import { writeFileSync } from 'node:fs';
+import { APP_CONFIG } from '../api/config/index.js';
 import { stories } from '../api/data/stories.js';
 import { companions } from '../api/data/companions.js';
 import { walkSnippets } from '../api/data/walk-snippets.js';
@@ -9,6 +10,7 @@ const payload = {
   companions,
   walkSnippets,
   walkOffsiteChatter: WALK_OFFSITE_CHATTER,
+  appConfig: APP_CONFIG,
 };
 
 writeFileSync(
