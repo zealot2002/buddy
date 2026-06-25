@@ -38,6 +38,12 @@ router.get('/tap', (req: Request, res: Response) => {
   res.json(payload);
 });
 
+/** 围栏外调皮话 */
+router.get('/offsite', (req: Request, res: Response) => {
+  const companionId = normalizeCompanionId((req.query.companionId as string) || 'su-dongpo');
+  res.json(resolveOffsiteChatter(companionId));
+});
+
 /** 场景A：围栏自动触发 — trigger=auto；手动调试可用 trigger=tap */
 router.get('/:id/play', (req: Request, res: Response) => {
   const { id } = req.params;

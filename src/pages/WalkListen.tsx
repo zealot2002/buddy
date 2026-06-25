@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { ChevronDown, MapPin, RefreshCw } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
-import { fetchWalkTap, useWalkGeofence } from '../hooks/useWalkGeofence';
+import { fetchWalkTap, fetchWalkOffsite, fetchWalkAreaStatus, useWalkGeofence } from '../hooks/useWalkGeofence';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
@@ -28,7 +28,26 @@ export const WalkListen = () => {
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
+  const [hasAreaContent, setHasAreaContent] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number) => {
+    try {
+      const { hasAreaContent: inside, nearest } = await fetchWalkAreaStatus(currentLat, currentLng);
+      setHasAreaContent(inside);
+      if (nearest.id) {
+        setNearestFence({
+          id: nearest.id,
+          label: nearest.label,
+          distanceMeters: nearest.distanceMeters ?? 0,
+          inside: nearest.inside ?? false,
+          radius: nearest.radius,
+        });
+      }
+    } catch (error) {
+      console.error('joyjoy walk area status failed:', error);
+    }
+  }, []);
 
   const companion = companions.find((item) => item.id === companionId) ?? companions[0];
 
@@ -45,7 +64,9 @@ export const WalkListen = () => {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation(position.coords.latitude, position.coords.longitude, '当前位置');
+        const { latitude, longitude } = position.coords;
+        setLocation(latitude, longitude, '当前位置');
+        refreshAreaStatus(latitude, longitude);
       },
       (error) => {
         console.error('joyjoy geolocation failed:', error);
@@ -54,25 +75,27 @@ export const WalkListen = () => {
       },
       { enableHighAccuracy: true, timeout: 15000 },
     );
-  }, [setLocation, setLocating, setError]);
+  }, [setLocation, setLocating, setError, refreshAreaStatus]);
 
   useEffect(() => {
-    if (isLocating) return undefined;
+    if (!navigator.geolocation) return undefined;
 
-    let cancelled = false;
-    fetch(`/api/walk/nearby?lat=${lat}&lng=${lng}&verbose=1`)
-      .then((res) => res.json())
-      .then((items: WalkNearbyStatus[]) => {
-        if (!cancelled && items[0]) setNearestFence(items[0]);
-      })
-      .catch((error) => {
-        console.error('joyjoy walk nearby status failed:', error);
-      });
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocation(latitude, longitude, '当前位置');
+        refreshAreaStatus(latitude, longitude);
+      },
+      (error) => {
+        console.error('joyjoy geolocation watch failed:', error);
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
 
     return () => {
-      cancelled = true;
+      navigator.geolocation.clearWatch(watchId);
     };
-  }, [lat, lng, isLocating]);
+  }, [setLocation, refreshAreaStatus]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -98,7 +121,7 @@ export const WalkListen = () => {
   });
 
   const handleCompanionTap = async () => {
-    if (isFetching || !companion) return;
+    if (isFetching || !companion || !hasAreaContent) return;
 
     setIsFetching(true);
     try {
@@ -109,6 +132,26 @@ export const WalkListen = () => {
       addMessage({
         role: 'companion',
         content: '（信号飘了一下）稍等，我重新组织语言…你再点我一次？',
+        source: 'tap',
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const handleStatusLightTap = async (event: MouseEvent) => {
+    event.stopPropagation();
+    if (isFetching || !companion || hasAreaContent) return;
+
+    setIsFetching(true);
+    try {
+      const payload = await fetchWalkOffsite(companionId);
+      handleSnippet(payload, 'tap');
+    } catch (error) {
+      console.error('joyjoy walk offsite failed:', error);
+      addMessage({
+        role: 'companion',
+        content: '（信号飘了一下）稍等，我重新组织语言…你再点一次灰灯？',
         source: 'tap',
       });
     } finally {
@@ -249,22 +292,42 @@ export const WalkListen = () => {
               onClick={() => setShowCompanionPicker((open) => !open)}
               className="flex min-w-0 flex-1 touch-target items-center gap-2"
             >
-              <img
-                src={getCompanionAvatar(companionId)}
-                alt={companion?.name || '旅伴'}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleCompanionTap();
-                }}
-                className={cn(
-                  'h-11 w-11 rounded-md border-2 bg-white object-cover transition-all',
-                  isFetching ? 'scale-95 opacity-60' : 'border-transparent active:scale-95 active:border-gold',
-                )}
-              />
+              <div className="relative shrink-0">
+                <img
+                  src={getCompanionAvatar(companionId)}
+                  alt={companion?.name || '旅伴'}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleCompanionTap();
+                  }}
+                  className={cn(
+                    'h-11 w-11 rounded-md border-2 bg-white object-cover transition-all',
+                    isFetching ? 'scale-95 opacity-60' : 'border-transparent active:scale-95',
+                    hasAreaContent && !isFetching && 'active:border-gold cursor-pointer',
+                    !hasAreaContent && 'cursor-default',
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={handleStatusLightTap}
+                  disabled={hasAreaContent || isFetching}
+                  aria-label={hasAreaContent ? '当前区域有讲解' : '点击听调皮话'}
+                  className={cn(
+                    'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white shadow-sm',
+                    hasAreaContent
+                      ? 'bg-emerald-500'
+                      : 'bg-gray-400 active:scale-110 disabled:opacity-60',
+                  )}
+                />
+              </div>
               <div className="min-w-0 text-left">
                 <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
                 <p className="truncate text-xs text-gray-500">
-                  {isFetching ? '正在组织语言…' : '点头像，听 ta 说一段'}
+                  {isFetching
+                    ? '正在组织语言…'
+                    : hasAreaContent
+                      ? '点头像，听延伸解读'
+                      : '点灰灯，听调皮话'}
                 </p>
               </div>
               <ChevronDown
@@ -277,7 +340,15 @@ export const WalkListen = () => {
           </div>
 
           <div className="mt-3 flex items-center gap-2 rounded-full border border-black/5 bg-white px-3 py-2.5">
-            <span className="flex-1 text-sm text-gray-400">点击旅伴头像，聆听感言…</span>
+            <span
+              className={cn(
+                'h-2 w-2 shrink-0 rounded-full',
+                hasAreaContent ? 'bg-emerald-500' : 'bg-gray-400',
+              )}
+            />
+            <span className="flex-1 text-sm text-gray-400">
+              {hasAreaContent ? '当前区域有讲解，旅伴随时可能开口' : '暂无区域讲解，点灰灯闲聊'}
+            </span>
           </div>
         </div>
       </footer>

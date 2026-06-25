@@ -165,6 +165,11 @@ export async function onRequest(context) {
         return Response.json(payload, { headers: corsHeaders });
       }
 
+      if (path === '/api/walk/offsite') {
+        const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');
+        return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
+      }
+
       const playMatch = path.match(/^\/api\/walk\/([^/]+)\/play$/);
       if (playMatch) {
         const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');

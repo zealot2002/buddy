@@ -130,3 +130,26 @@ export async function fetchWalkTap(
   if (!res.ok) throw new Error('Failed to fetch walk tap content');
   return res.json();
 }
+
+/** 围栏外调皮话（仅灰色状态灯触发） */
+export async function fetchWalkOffsite(companionId: string): Promise<WalkPlayPayload> {
+  const res = await fetch(
+    `${API_BASE}/walk/offsite?companionId=${encodeURIComponent(companionId)}`,
+  );
+  if (!res.ok) throw new Error('Failed to fetch offsite chatter');
+  return res.json();
+}
+
+export async function fetchWalkAreaStatus(lat: number, lng: number): Promise<{
+  hasAreaContent: boolean;
+  nearest: WalkSnippetMeta & { label?: string; distanceMeters?: number; inside?: boolean };
+}> {
+  const res = await fetch(`${API_BASE}/walk/nearby?lat=${lat}&lng=${lng}&verbose=1`);
+  if (!res.ok) throw new Error('Failed to fetch walk area status');
+  const items = (await res.json()) as Array<WalkSnippetMeta & { label?: string; distanceMeters: number; inside: boolean }>;
+  const insideFence = items.find((item) => item.inside);
+  return {
+    hasAreaContent: Boolean(insideFence),
+    nearest: insideFence ?? items[0] ?? { id: '', lat, lng, radius: 0, distanceMeters: 0, inside: false },
+  };
+}
