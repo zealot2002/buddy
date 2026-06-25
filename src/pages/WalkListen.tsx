@@ -7,7 +7,15 @@ import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
 import { useWalkChatStore } from '../store/walk-chat';
 import { getCompanionAvatar } from '../../api/data/media.js';
-import { cn } from '@/lib/utils';
+import { cn, formatBeijingTime } from '@/lib/utils';
+
+interface WalkNearbyStatus {
+  id: string;
+  label?: string;
+  distanceMeters: number;
+  inside: boolean;
+  radius: number;
+}
 
 export const WalkListen = () => {
   const { companions } = useCompanions();
@@ -19,6 +27,7 @@ export const WalkListen = () => {
   const [companionId, setCompanionId] = useState(defaultCompanionId);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const companion = companions.find((item) => item.id === companionId) ?? companions[0];
@@ -46,6 +55,24 @@ export const WalkListen = () => {
       { enableHighAccuracy: true, timeout: 15000 },
     );
   }, [setLocation, setLocating, setError]);
+
+  useEffect(() => {
+    if (isLocating) return undefined;
+
+    let cancelled = false;
+    fetch(`/api/walk/nearby?lat=${lat}&lng=${lng}&verbose=1`)
+      .then((res) => res.json())
+      .then((items: WalkNearbyStatus[]) => {
+        if (!cancelled && items[0]) setNearestFence(items[0]);
+      })
+      .catch((error) => {
+        console.error('joyjoy walk nearby status failed:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lat, lng, isLocating]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -108,33 +135,42 @@ export const WalkListen = () => {
   }, [messages.length, addMessage]);
 
   return (
-    <div className="min-h-screen bg-[#ededed] flex flex-col pb-safe">
-      <header className="sticky top-0 z-20 bg-[#ededed]/95 backdrop-blur border-b border-black/5 pt-safe">
+    <div className="mx-auto flex h-[calc(100dvh-var(--nav-height)-env(safe-area-inset-bottom,0px))] max-w-app flex-col overflow-hidden bg-[#ededed]">
+      <header className="z-20 shrink-0 border-b border-black/5 bg-[#ededed] pt-safe">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <h1 className="font-serif text-lg font-bold text-gray-900">边走边听</h1>
-            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3 h-3" />
-              {isLocating ? '定位中…' : `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+              <MapPin className="h-3 w-3" />
+              {isLocating
+                ? '定位中…'
+                : nearestFence
+                  ? nearestFence.inside
+                    ? `已在「${nearestFence.label ?? nearestFence.id}」围栏内`
+                    : `距「${nearestFence.label ?? nearestFence.id}」${nearestFence.distanceMeters}m`
+                  : `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
             </p>
           </div>
           <button
             type="button"
             onClick={handleResetSession}
-            className="p-2 rounded-full text-gray-600 active:bg-black/5 touch-target"
+            className="touch-target rounded-full p-2 text-gray-600 active:bg-black/5"
             aria-label="重新开始"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {messages.map((message) => {
+          const timeLabel = formatBeijingTime(message.timestamp);
+
           if (message.role === 'system') {
             return (
-              <div key={message.id} className="flex justify-center">
-                <p className="text-xs text-gray-500 bg-black/5 px-3 py-1.5 rounded-full max-w-[85%] text-center leading-relaxed">
+              <div key={message.id} className="flex flex-col items-center gap-1">
+                <span className="text-[11px] text-gray-400">{timeLabel}</span>
+                <p className="max-w-[85%] rounded-full bg-black/5 px-3 py-1.5 text-center text-xs leading-relaxed text-gray-500">
                   {message.content}
                 </p>
               </div>
@@ -142,23 +178,24 @@ export const WalkListen = () => {
           }
 
           return (
-            <div key={message.id} className="flex items-start gap-2 max-w-[88%]">
+            <div key={message.id} className="flex max-w-[88%] items-start gap-2">
               <img
                 src={getCompanionAvatar(companionId, companion?.avatar)}
                 alt={companion?.name || '旅伴'}
-                className="w-9 h-9 rounded-md shrink-0 bg-white object-cover"
+                className="h-9 w-9 shrink-0 rounded-md bg-white object-cover"
               />
-              <div className="relative bg-white rounded-lg px-3 py-2.5 shadow-sm before:content-[''] before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white">
-                <p className="text-[15px] text-gray-900 leading-relaxed whitespace-pre-wrap">
+              <div className="relative rounded-lg bg-white px-3 py-2.5 shadow-sm before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white before:content-['']">
+                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-900">
                   {message.content}
                 </p>
+                <p className="mt-1 text-right text-[11px] text-gray-400">{timeLabel}</p>
               </div>
             </div>
           );
         })}
       </div>
 
-      <footer className="sticky bottom-0 bg-[#f7f7f7] border-t border-black/5 pb-safe">
+      <footer className="z-20 shrink-0 border-t border-black/5 bg-[#f7f7f7] pb-safe">
         <div className="px-4 py-3">
           <div className="flex items-center gap-3">
             <button

@@ -82,21 +82,23 @@ function resolveOffsiteChatter(companionId) {
 
 function getNearbyWalkMetas(lat, lng, limit = 20) {
   return walkSnippets
-    .map((snippet) => ({
-      id: snippet.id,
-      lat: snippet.location.lat,
-      lng: snippet.location.lng,
-      radius: snippet.location.radiusMeters,
-      distance: haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
-    }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, limit)
-    .map(({ id, lat: snippetLat, lng: snippetLng, radius }) => ({
-      id,
-      lat: snippetLat,
-      lng: snippetLng,
-      radius,
-    }));
+    .map((snippet) => {
+      const distanceMeters = Math.round(
+        haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
+      );
+      const inside = distanceMeters <= snippet.location.radiusMeters;
+      return {
+        id: snippet.id,
+        label: snippet.label,
+        lat: snippet.location.lat,
+        lng: snippet.location.lng,
+        radius: snippet.location.radiusMeters,
+        distanceMeters,
+        inside,
+      };
+    })
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, limit);
 }
 
 function findActiveSnippet(lat, lng) {
@@ -129,7 +131,20 @@ export async function onRequest(context) {
       if (path === '/api/walk/nearby') {
         const lat = parseFloat(url.searchParams.get('lat') || '39.9163');
         const lng = parseFloat(url.searchParams.get('lng') || '116.3972');
-        return Response.json(getNearbyWalkMetas(lat, lng), { headers: corsHeaders });
+        const verbose = url.searchParams.get('verbose') === '1';
+        const items = getNearbyWalkMetas(lat, lng);
+        if (verbose) {
+          return Response.json(items, { headers: corsHeaders });
+        }
+        return Response.json(
+          items.map(({ id, lat: snippetLat, lng: snippetLng, radius }) => ({
+            id,
+            lat: snippetLat,
+            lng: snippetLng,
+            radius,
+          })),
+          { headers: corsHeaders },
+        );
       }
 
       if (path === '/api/walk/tap') {

@@ -1079,12 +1079,13 @@
       }
     },
     {
-      "id": "walk-sy-sanhao-wencui",
+      "id": "walk-sy-bainaohui",
+      "label": "百脑汇",
       "areaTag": "shenyang-sanhao",
       "location": {
-        "lat": 41.75442,
-        "lng": 123.42005,
-        "radiusMeters": 50
+        "lat": 41.7621,
+        "lng": 123.4207,
+        "radiusMeters": 80
       },
       "scripts": {
         "su-dongpo": {
@@ -1170,12 +1171,13 @@
       }
     },
     {
-      "id": "walk-sy-bainaohui",
+      "id": "walk-sy-huaqiang",
+      "label": "华强广场",
       "areaTag": "shenyang-sanhao",
       "location": {
-        "lat": 41.76307,
-        "lng": 123.428712,
-        "radiusMeters": 50
+        "lat": 41.7616799160169,
+        "lng": 123.4234024905517,
+        "radiusMeters": 80
       },
       "scripts": {
         "su-dongpo": {
@@ -1261,12 +1263,13 @@
       }
     },
     {
-      "id": "walk-sy-huaqiang",
+      "id": "walk-sy-weiyong",
+      "label": "维用科技大厦",
       "areaTag": "shenyang-sanhao",
       "location": {
-        "lat": 41.762654,
-        "lng": 123.431419,
-        "radiusMeters": 50
+        "lat": 41.76101308828729,
+        "lng": 123.4244888269541,
+        "radiusMeters": 80
       },
       "scripts": {
         "su-dongpo": {
@@ -1352,12 +1355,13 @@
       }
     },
     {
-      "id": "walk-sy-weiyong",
+      "id": "walk-sy-dongruan",
+      "label": "东软电脑城",
       "areaTag": "shenyang-sanhao",
       "location": {
-        "lat": 41.761989,
-        "lng": 123.432507,
-        "radiusMeters": 50
+        "lat": 41.76028687665965,
+        "lng": 123.4260983702964,
+        "radiusMeters": 80
       },
       "scripts": {
         "su-dongpo": {
@@ -1443,12 +1447,13 @@
       }
     },
     {
-      "id": "walk-sy-dongruan",
+      "id": "walk-sy-sanhao-wencui",
+      "label": "文萃路三好街路口",
       "areaTag": "shenyang-sanhao",
       "location": {
-        "lat": 41.761266,
-        "lng": 123.43412,
-        "radiusMeters": 50
+        "lat": 41.75345942792686,
+        "lng": 123.41204843522283,
+        "radiusMeters": 80
       },
       "scripts": {
         "su-dongpo": {

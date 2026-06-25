@@ -7,6 +7,7 @@ import {
   normalizeCompanionId,
 } from './narrations.js';
 import { SHENYANG_SANHAO_NARRATIONS } from './shenyang-sanhao-narrations.js';
+import { SHENYANG_SANHAO_FENCES, WALK_FENCE_LABELS } from './walk-fence-registry.js';
 
 export interface WalkScriptVariant {
   versionId: string;
@@ -23,6 +24,7 @@ export interface WalkCompanionScripts {
 
 export interface WalkSnippet {
   id: string;
+  label?: string;
   areaTag?: string;
   location: {
     lat: number;
@@ -34,9 +36,15 @@ export interface WalkSnippet {
 
 export interface WalkSnippetMeta {
   id: string;
+  label?: string;
   lat: number;
   lng: number;
   radius: number;
+}
+
+export interface WalkNearbyStatus extends WalkSnippetMeta {
+  distanceMeters: number;
+  inside: boolean;
 }
 
 export type WalkTriggerType = 'auto' | 'tap' | 'offsite';
@@ -114,15 +122,6 @@ const SUMMER_FENCES = [
   { id: 'walk-sp-qikongqiao', lat: 39.9988, lng: 116.279 },
 ];
 
-/** 沈阳三好街测试围栏（WGS84），半径略大便于真机 GPS 触发 */
-const SANHAO_FENCES = [
-  { id: 'walk-sy-sanhao-wencui', lat: 41.75442, lng: 123.42005 },
-  { id: 'walk-sy-bainaohui', lat: 41.76307, lng: 123.428712 },
-  { id: 'walk-sy-huaqiang', lat: 41.762654, lng: 123.431419 },
-  { id: 'walk-sy-weiyong', lat: 41.761989, lng: 123.432507 },
-  { id: 'walk-sy-dongruan', lat: 41.761266, lng: 123.43412 },
-];
-
 export const walkSnippets: WalkSnippet[] = [
   ...FORBIDDEN_FENCES.map((fence, index) => ({
     id: fence.id,
@@ -144,17 +143,20 @@ export const walkSnippets: WalkSnippet[] = [
     },
     scripts: buildScriptsForFence(SUMMER_PALACE_NARRATIONS, index, SUMMER_FENCES.length),
   })),
-  ...SANHAO_FENCES.map((fence, index) => ({
+  ...SHENYANG_SANHAO_FENCES.map((fence, index) => ({
     id: fence.id,
+    label: fence.label,
     areaTag: 'shenyang-sanhao',
     location: {
       lat: fence.lat,
       lng: fence.lng,
-      radiusMeters: 50,
+      radiusMeters: fence.radiusMeters,
     },
-    scripts: buildScriptsForFence(SHENYANG_SANHAO_NARRATIONS, index, SANHAO_FENCES.length),
+    scripts: buildScriptsForFence(SHENYANG_SANHAO_NARRATIONS, index, SHENYANG_SANHAO_FENCES.length),
   })),
 ];
+
+export { WALK_FENCE_LABELS };
 
 export function findWalkSnippet(id: string): WalkSnippet | undefined {
   return walkSnippets.find((snippet) => snippet.id === id);
@@ -173,6 +175,7 @@ export function findActiveWalkSnippet(lat: number, lng: number): WalkSnippet | u
 export function toWalkSnippetMeta(snippet: WalkSnippet): WalkSnippetMeta {
   return {
     id: snippet.id,
+    label: snippet.label ?? WALK_FENCE_LABELS[snippet.id],
     lat: snippet.location.lat,
     lng: snippet.location.lng,
     radius: snippet.location.radiusMeters,
@@ -228,12 +231,20 @@ export function haversineMeters(
 }
 
 export function getNearbyWalkMetas(lat: number, lng: number, limit = 20): WalkSnippetMeta[] {
+  return getNearbyWalkStatus(lat, lng, limit).map(({ distanceMeters: _d, inside: _i, ...meta }) => meta);
+}
+
+export function getNearbyWalkStatus(lat: number, lng: number, limit = 20): WalkNearbyStatus[] {
   return walkSnippets
-    .map((snippet) => ({
-      meta: toWalkSnippetMeta(snippet),
-      distance: haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
-    }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, limit)
-    .map(({ meta }) => meta);
+    .map((snippet) => {
+      const distanceMeters = haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng);
+      const meta = toWalkSnippetMeta(snippet);
+      return {
+        ...meta,
+        distanceMeters: Math.round(distanceMeters),
+        inside: distanceMeters <= snippet.location.radiusMeters,
+      };
+    })
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, limit);
 }

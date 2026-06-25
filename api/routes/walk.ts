@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import {
   findActiveWalkSnippet,
   getNearbyWalkMetas,
+  getNearbyWalkStatus,
   resolveWalkPlay,
 } from '../data/walk-snippets.js';
 import { resolveOffsiteChatter } from '../data/walk-offsite-chatter.js';
@@ -12,7 +13,8 @@ const router = express.Router();
 router.get('/nearby', (req: Request, res: Response) => {
   const lat = parseFloat(req.query.lat as string) || 39.9163;
   const lng = parseFloat(req.query.lng as string) || 116.3972;
-  res.json(getNearbyWalkMetas(lat, lng));
+  const verbose = req.query.verbose === '1';
+  res.json(verbose ? getNearbyWalkStatus(lat, lng) : getNearbyWalkMetas(lat, lng));
 });
 
 /** 场景B：点击头像 — 围栏内延伸解读，围栏外调皮话 */
