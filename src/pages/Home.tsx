@@ -7,6 +7,7 @@ import { useLocationStore } from '../store/location';
 import { useNearbyStories, useStories } from '../hooks/useApi';
 import { usePlayerStore } from '../store/player';
 import { useNavigate } from 'react-router-dom';
+import { getStoryCoverImage } from '../../api/data/media.js';
 
 export const Home = () => {
   const { lat, lng, setLocation, setLocating, isLocating } = useLocationStore();
@@ -49,7 +50,7 @@ export const Home = () => {
         <section className="mb-6">
           <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden aspect-[16/11] sm:aspect-[16/10]">
             <img 
-              src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=beautiful%20chinese%20landscape%20painting%20mountains%20and%20lake%20traditional%20style%20golden%20hour&image_size=landscape_16_9"
+              src={getStoryCoverImage('west-lake-bridge')}
               alt="Hero"
               className="w-full h-full object-cover"
             />
@@ -143,23 +144,6 @@ export const Home = () => {
               ))}
             </div>
           )}
-        </section>
-
-        <section className="mb-4">
-          <div className="bg-gradient-to-r from-card-bg to-card-border rounded-2xl p-4 sm:p-5 border border-card-border">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-gold" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-serif font-bold text-light-blue mb-1">个性化推荐</h3>
-                <p className="text-sm text-gray-400 mb-3">根据你的位置和偏好，为你推荐最适合的故事</p>
-                <button type="button" className="gold-outline-button text-sm px-4 py-2 w-full sm:w-auto">
-                  开启推荐
-                </button>
-              </div>
-            </div>
-          </div>
         </section>
       </PageContent>
     </PageShell>

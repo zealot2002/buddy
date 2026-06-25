@@ -5,6 +5,7 @@ import { useCompanions } from '../hooks/useApi';
 import { useFavoritesStore } from '../store/favorites';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Companion } from '../../api/data/companions.js';
+import { getCompanionAvatar } from '../../api/data/media.js';
 
 export const Companions = () => {
   const { companions, loading } = useCompanions();
@@ -48,7 +49,7 @@ export const Companions = () => {
                 >
                   <div className="relative mb-2 sm:mb-3 mx-auto w-fit">
                     <img 
-                      src={companion.avatar}
+                      src={getCompanionAvatar(companion.id, companion.avatar)}
                       alt={companion.name}
                       className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full object-cover border-2 border-gold/30 group-active:border-gold transition-colors"
                     />

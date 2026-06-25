@@ -1,9 +1,9 @@
-import { Play, Heart, Clock, MapPin, Users } from 'lucide-react';
+import { Play, Clock, MapPin, Users } from 'lucide-react';
 import type { Story } from '../../api/data/stories.js';
-import { useFavoritesStore } from '../store/favorites';
 import { usePlayerStore } from '../store/player';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { getStoryCoverImage, DEFAULT_STORY_COVER } from '../../api/data/media.js';
 
 interface StoryCardProps {
   story: Story;
@@ -13,11 +13,10 @@ interface StoryCardProps {
 }
 
 export const StoryCard = ({ story, compact = false, layout = 'grid' }: StoryCardProps) => {
-  const { isStoryFavorite, addStory, removeStory } = useFavoritesStore();
   const { play } = usePlayerStore();
   const navigate = useNavigate();
-  const isFavorite = isStoryFavorite(story.id);
   const defaultDuration = story.narrators[0]?.duration || story.duration;
+  const coverSrc = getStoryCoverImage(story.id, story.coverImage);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -36,52 +35,48 @@ export const StoryCard = ({ story, compact = false, layout = 'grid' }: StoryCard
     navigate(`/story/${story.id}`);
   };
 
-  const handleFavorite = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isFavorite) {
-      removeStory(story.id);
-    } else {
-      addStory(story);
-    }
-  };
-
   const cardWidthClass = layout === 'scroll'
     ? compact
       ? 'w-[72vw] max-w-[260px] flex-shrink-0'
       : 'w-[82vw] max-w-[320px] flex-shrink-0'
     : 'w-full';
 
+  const imageBlock = (
+    <div className={cn('relative w-full bg-card-border overflow-hidden', compact ? 'aspect-[4/3]' : 'aspect-[16/10]')}>
+      <img
+        src={coverSrc}
+        alt={story.title}
+        className="absolute inset-0 w-full h-full object-cover"
+        loading="lazy"
+        onError={(e) => {
+          if (!e.currentTarget.src.includes(DEFAULT_STORY_COVER)) {
+            e.currentTarget.src = DEFAULT_STORY_COVER;
+          }
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-deep-navy/80 via-deep-navy/20 to-transparent" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <button
+          type="button"
+          onClick={handlePlay}
+          className={cn(
+            'rounded-full bg-gradient-to-r from-gold to-amber flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-target',
+            compact ? 'w-11 h-11' : 'w-14 h-14 animate-pulse-glow',
+          )}
+        >
+          <Play className={cn('text-deep-navy ml-0.5', compact ? 'w-5 h-5' : 'w-7 h-7')} />
+        </button>
+      </div>
+    </div>
+  );
+
   if (compact) {
     return (
-      <div 
+      <div
         className={cn('story-card', cardWidthClass)}
         onClick={() => navigate(`/story/${story.id}`)}
       >
-        <div className="relative aspect-[4/3]">
-          <img 
-            src={story.coverImage} 
-            alt={story.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-deep-navy/80 to-transparent" />
-          <button 
-            type="button"
-            onClick={handlePlay}
-            className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-gold/90 flex items-center justify-center active:bg-gold transition-colors touch-target"
-          >
-            <Play className="w-4 h-4 text-deep-navy ml-0.5" />
-          </button>
-          <button 
-            type="button"
-            onClick={handleFavorite}
-            className={cn(
-              'absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors touch-target',
-              isFavorite ? 'bg-red-500/80' : 'bg-deep-navy/50',
-            )}
-          >
-            <Heart className={cn('w-4 h-4', isFavorite ? 'fill-white text-white' : 'text-white')} />
-          </button>
-        </div>
+        {imageBlock}
         <div className="p-2.5 sm:p-3">
           <h3 className="font-serif font-semibold text-sm text-light-blue mb-1 line-clamp-1">{story.title}</h3>
           <p className="text-xs text-gray-400 mb-2 line-clamp-2">{story.description}</p>
@@ -112,35 +107,11 @@ export const StoryCard = ({ story, compact = false, layout = 'grid' }: StoryCard
   }
 
   return (
-    <div 
+    <div
       className={cn('story-card', cardWidthClass)}
       onClick={() => navigate(`/story/${story.id}`)}
     >
-      <div className="relative aspect-[16/10]">
-        <img 
-          src={story.coverImage} 
-          alt={story.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-deep-navy/90 via-deep-navy/20 to-transparent" />
-        <button 
-          type="button"
-          onClick={handlePlay}
-          className="absolute bottom-3 right-3 w-12 h-12 rounded-full bg-gradient-to-r from-gold to-amber flex items-center justify-center active:scale-105 transition-transform animate-pulse-glow touch-target"
-        >
-          <Play className="w-6 h-6 text-deep-navy ml-0.5" />
-        </button>
-        <button 
-          type="button"
-          onClick={handleFavorite}
-          className={cn(
-            'absolute top-2 right-2 w-9 h-9 rounded-full flex items-center justify-center transition-colors touch-target',
-            isFavorite ? 'bg-red-500/80' : 'bg-deep-navy/50',
-          )}
-        >
-          <Heart className={cn('w-4 h-4', isFavorite ? 'fill-white text-white' : 'text-white')} />
-        </button>
-      </div>
+      {imageBlock}
       <div className="p-3 sm:p-4">
         <h3 className="font-serif font-bold text-base sm:text-lg text-light-blue mb-1.5 line-clamp-1">{story.title}</h3>
         <p className="text-xs sm:text-sm text-gray-400 mb-2 line-clamp-2">{story.description}</p>

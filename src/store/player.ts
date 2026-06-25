@@ -19,6 +19,106 @@ interface PlayerState {
 }
 
 let audioElement: HTMLAudioElement | null = null;
+let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+const getFallbackDuration = (narrator: NarratorVersion | null | undefined, story: Story) =>
+  narrator?.duration || story.duration;
+
+const clearFallbackTimer = () => {
+  if (fallbackTimer) {
+    clearInterval(fallbackTimer);
+    fallbackTimer = null;
+  }
+};
+
+const bindAudioEvents = (
+  audio: HTMLAudioElement,
+  set: (partial: Partial<PlayerState>) => void,
+  get: () => PlayerState,
+  fallbackDuration: number,
+) => {
+  audio.addEventListener('loadedmetadata', () => {
+    set({
+      duration: Number.isFinite(audio.duration) && audio.duration > 0
+        ? audio.duration
+        : fallbackDuration,
+      progress: 0,
+    });
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    const totalDuration = Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : get().duration || fallbackDuration;
+    const progressPercent = totalDuration > 0
+      ? (audio.currentTime / totalDuration) * 100
+      : 0;
+    set({ progress: progressPercent });
+  });
+
+  audio.addEventListener('ended', () => {
+    set({ isPlaying: false, progress: 100 });
+  });
+
+  audio.addEventListener('error', () => {
+    console.error('joyjoy Audio playback error');
+    clearFallbackTimer();
+    set({
+      duration: fallbackDuration,
+      isPlaying: true,
+      progress: 0,
+    });
+
+    fallbackTimer = setInterval(() => {
+      const state = get();
+      if (state.progress >= 100) {
+        clearFallbackTimer();
+        set({ isPlaying: false, progress: 100 });
+        return;
+      }
+      set({
+        progress: Math.min(state.progress + (100 / (fallbackDuration * 10)), 100),
+      });
+    }, 100);
+  });
+};
+
+const startAudio = (
+  story: Story,
+  companionId: string,
+  set: (partial: Partial<PlayerState> | ((state: PlayerState) => Partial<PlayerState>)) => void,
+  get: () => PlayerState,
+) => {
+  clearFallbackTimer();
+
+  if (audioElement) {
+    audioElement.pause();
+    audioElement = null;
+  }
+
+  const narrator = story.narrators.find((n) => n.companionId === companionId);
+  const fallbackDuration = getFallbackDuration(narrator, story);
+  const audioUrl = narrator?.audioUrl
+    || `/api/tts?text=${encodeURIComponent(narrator?.content || story.description)}&lang=zh-CN`;
+
+  audioElement = new Audio(audioUrl);
+  audioElement.volume = get().volume;
+
+  bindAudioEvents(audioElement, set, get, fallbackDuration);
+
+  set({
+    currentStory: story,
+    currentNarrator: narrator || null,
+    currentCompanionId: companionId,
+    duration: fallbackDuration,
+    isPlaying: true,
+    progress: 0,
+  });
+
+  audioElement.play().catch((e) => {
+    console.error('joyjoy Playback failed:', e);
+  });
+};
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentStory: null,
@@ -28,74 +128,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   progress: 0,
   volume: 0.8,
   duration: 0,
+
   play: (story, companionId) => {
-    if (audioElement) {
-      audioElement.pause();
-      audioElement = null;
-    }
-
-    const targetCompanionId = companionId || story.defaultCompanionId;
-    const narrator = story.narrators.find((n) => n.companionId === targetCompanionId);
-    
-    const audioUrl = narrator?.audioUrl || `/api/tts?text=${encodeURIComponent(narrator?.content || story.description)}&lang=zh-CN`;
-    
-    audioElement = new Audio(audioUrl);
-    audioElement.volume = get().volume;
-
-    audioElement.addEventListener('loadedmetadata', () => {
-      set({ 
-        duration: audioElement?.duration || (narrator?.duration || story.duration) * 60,
-        currentStory: story, 
-        currentNarrator: narrator || null, 
-        currentCompanionId: targetCompanionId,
-        isPlaying: true, 
-        progress: 0 
-      });
-    });
-
-    audioElement.addEventListener('timeupdate', () => {
-      if (audioElement) {
-        const totalDuration = audioElement.duration || get().duration;
-        const progressPercent = totalDuration > 0 ? (audioElement.currentTime / totalDuration) * 100 : 0;
-        set({ progress: progressPercent });
-      }
-    });
-
-    audioElement.addEventListener('ended', () => {
-      set({ isPlaying: false, progress: 100 });
-    });
-
-    audioElement.addEventListener('error', (e) => {
-      console.error('Audio playback error:', e);
-      const fallbackDuration = (narrator?.duration || story.duration) * 60;
-      set({ 
-        duration: fallbackDuration,
-        currentStory: story, 
-        currentNarrator: narrator || null, 
-        currentCompanionId: targetCompanionId,
-        isPlaying: true, 
-        progress: 0 
-      });
-      
-      const interval = setInterval(() => {
-        const state = get();
-        if (state.progress >= 100) {
-          clearInterval(interval);
-          set({ isPlaying: false });
-        } else {
-          set({ progress: Math.min(state.progress + (100 / (fallbackDuration * 10)), 100) });
-        }
-      }, 100);
-    });
-
-    audioElement.play().catch((e) => {
-      console.error('Playback failed:', e);
-    });
+    startAudio(story, companionId || story.defaultCompanionId, set, get);
   },
+
   pause: () => {
     audioElement?.pause();
     set({ isPlaying: false });
   },
+
   toggle: () => {
     const { isPlaying } = get();
     if (isPlaying) {
@@ -103,76 +145,50 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ isPlaying: false });
     } else {
       audioElement?.play().catch((e) => {
-        console.error('Playback failed:', e);
+        console.error('joyjoy Playback failed:', e);
       });
       set({ isPlaying: true });
     }
   },
+
   setProgress: (progress) => {
-    set({ progress });
+    const clamped = Math.max(0, Math.min(100, progress));
+    set({ progress: clamped });
+
     if (audioElement) {
-      const totalDuration = audioElement.duration || get().duration;
-      audioElement.currentTime = (progress / 100) * totalDuration;
+      const totalDuration = Number.isFinite(audioElement.duration) && audioElement.duration > 0
+        ? audioElement.duration
+        : get().duration;
+      if (totalDuration > 0) {
+        audioElement.currentTime = (clamped / 100) * totalDuration;
+      }
     }
   },
+
   setVolume: (volume) => {
     set({ volume });
     if (audioElement) {
       audioElement.volume = volume;
     }
   },
+
   switchCompanion: (companionId) => {
     const { currentStory } = get();
     if (!currentStory) return;
-    
-    if (audioElement) {
-      audioElement.pause();
-      audioElement = null;
-    }
-
-    const narrator = currentStory.narrators.find((n) => n.companionId === companionId);
-    
-    const audioUrl = narrator?.audioUrl || `/api/tts?text=${encodeURIComponent(narrator?.content || currentStory.description)}&lang=zh-CN`;
-    
-    audioElement = new Audio(audioUrl);
-    audioElement.volume = get().volume;
-
-    audioElement.addEventListener('loadedmetadata', () => {
-      set({ 
-        duration: audioElement?.duration || (narrator?.duration || currentStory.duration) * 60,
-        currentNarrator: narrator || null, 
-        currentCompanionId: companionId,
-        isPlaying: true, 
-        progress: 0 
-      });
-    });
-
-    audioElement.addEventListener('timeupdate', () => {
-      if (audioElement) {
-        const totalDuration = audioElement.duration || get().duration;
-        const progressPercent = totalDuration > 0 ? (audioElement.currentTime / totalDuration) * 100 : 0;
-        set({ progress: progressPercent });
-      }
-    });
-
-    audioElement.addEventListener('ended', () => {
-      set({ isPlaying: false, progress: 100 });
-    });
-
-    audioElement.play().catch((e) => {
-      console.error('Playback failed:', e);
-    });
+    startAudio(currentStory, companionId, set, get);
   },
+
   stop: () => {
+    clearFallbackTimer();
     audioElement?.pause();
     audioElement = null;
-    set({ 
-      currentStory: null, 
-      currentNarrator: null, 
-      currentCompanionId: null, 
-      isPlaying: false, 
+    set({
+      currentStory: null,
+      currentNarrator: null,
+      currentCompanionId: null,
+      isPlaying: false,
       progress: 0,
-      duration: 0 
+      duration: 0,
     });
   },
 }));

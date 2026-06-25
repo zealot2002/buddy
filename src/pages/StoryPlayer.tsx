@@ -11,6 +11,7 @@ import { useStory, useCompanions } from '../hooks/useApi';
 import { usePlayerStore } from '../store/player';
 import { useFavoritesStore } from '../store/favorites';
 import { StoryCard } from '../components/StoryCard';
+import { getStoryCoverImage, getCompanionAvatar } from '../../api/data/media.js';
 
 export const StoryPlayer = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +36,7 @@ export const StoryPlayer = () => {
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [shareTip, setShareTip] = useState('');
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,12 +51,43 @@ export const StoryPlayer = () => {
     }
   }, [story, currentStory, companionIdFromUrl, currentCompanionId, switchCompanion]);
 
-  const handleProgressClick = (e: React.MouseEvent) => {
+  const updateProgressFromClientX = (clientX: number) => {
     if (!progressRef.current) return;
-    
     const rect = progressRef.current.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    setProgress(Math.floor(percent * 100));
+    const percent = ((clientX - rect.left) / rect.width) * 100;
+    setProgress(percent);
+  };
+
+  const handleProgressClick = (e: React.MouseEvent) => {
+    updateProgressFromClientX(e.clientX);
+  };
+
+  const handleProgressTouch = (e: React.TouchEvent) => {
+    if (e.touches[0]) {
+      updateProgressFromClientX(e.touches[0].clientX);
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setShareTip('链接已复制，快去分享给朋友吧');
+    } catch {
+      setShareTip('复制失败，请手动复制地址栏链接');
+    }
+    window.setTimeout(() => setShareTip(''), 2500);
   };
 
   const formatTime = (seconds: number) => {
@@ -84,10 +117,11 @@ export const StoryPlayer = () => {
   }
 
   const isFavorite = isStoryFavorite(story.id);
-  const displayDuration = duration || (currentNarrator?.duration || story.duration) * 60;
-  const progressPercent = progress;
-  const currentTimeSeconds = Math.floor((progress / 100) * displayDuration);
+  const displayDuration = duration || currentNarrator?.duration || story.duration;
+  const progressPercent = Math.max(0, Math.min(100, progress));
+  const currentTimeSeconds = Math.floor((progressPercent / 100) * displayDuration);
   const currentCompanion = companions.find((c) => c.id === currentCompanionId);
+  const coverSrc = getStoryCoverImage(story.id, story.coverImage);
 
   return (
     <PageShell withBottomNav={false}>
@@ -103,11 +137,11 @@ export const StoryPlayer = () => {
           <span>返回</span>
         </button>
 
-        <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden aspect-[16/10] mb-4 sm:mb-6">
+        <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden aspect-[16/10] mb-4 sm:mb-6 bg-card-border">
           <img 
-            src={story.coverImage}
+            src={coverSrc}
             alt={story.title}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-deep-navy via-deep-navy/30 to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4">
@@ -139,7 +173,7 @@ export const StoryPlayer = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-1 sm:gap-2">
+            <div className="flex items-center justify-end gap-1 sm:gap-2 relative">
               <button 
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}
@@ -163,23 +197,35 @@ export const StoryPlayer = () => {
               >
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
-              <button type="button" className="p-2.5 rounded-full active:bg-card-border text-gray-400 transition-colors touch-target">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="p-2.5 rounded-full active:bg-card-border text-gray-400 transition-colors touch-target"
+                aria-label="分享故事"
+              >
                 <Share2 className="w-5 h-5" />
               </button>
+              {shareTip && (
+                <span className="absolute -top-9 right-0 whitespace-nowrap rounded-lg bg-card-border px-2.5 py-1 text-xs text-light-blue shadow-lg">
+                  {shareTip}
+                </span>
+              )}
             </div>
           </div>
 
           <div 
             ref={progressRef}
             onClick={handleProgressClick}
-            className="relative h-2 bg-card-border rounded-full cursor-pointer mt-4 group touch-target"
+            onTouchStart={handleProgressTouch}
+            onTouchMove={handleProgressTouch}
+            className="relative h-2.5 bg-card-border rounded-full cursor-pointer mt-4 group touch-none"
           >
             <div 
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-gold to-amber rounded-full transition-all duration-300"
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-gold to-amber rounded-full transition-[width] duration-150"
               style={{ width: `${progressPercent}%` }}
             />
             <div 
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-gold rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-gold rounded-full shadow-md"
               style={{ left: `calc(${progressPercent}% - 8px)` }}
             />
           </div>
@@ -220,7 +266,7 @@ export const StoryPlayer = () => {
                     <div className="flex items-center gap-2 sm:gap-3">
                       <div className="relative shrink-0">
                         <img 
-                          src={companion?.avatar}
+                          src={getCompanionAvatar(companion?.id || '', companion?.avatar)}
                           alt={companion?.name}
                           className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ${
                             isActive ? 'ring-2 ring-gold ring-offset-1 sm:ring-offset-2 ring-offset-card-bg' : ''
@@ -303,7 +349,7 @@ export const StoryPlayer = () => {
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[calc(var(--app-max-width)-2rem)] bg-card-bg/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-card-border shadow-lg pb-safe">
             <div className="flex items-center gap-3 min-w-0">
               <img 
-                src={story.coverImage}
+                src={coverSrc}
                 alt={story.title}
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0"
               />

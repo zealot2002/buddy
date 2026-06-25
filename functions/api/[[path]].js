@@ -1,3 +1,23 @@
+const STORY_COVER_IMAGES = {
+  'west-lake-bridge': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Hangzhou_Su_Causeway.JPG/960px-Hangzhou_Su_Causeway.JPG',
+  'forbidden-city': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/The_Forbidden_City_-_View_from_Jingshan_Hill.jpg/960px-The_Forbidden_City_-_View_from_Jingshan_Hill.jpg',
+  'forbidden-city-hall': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/The_Forbidden_City_-_View_from_Jingshan_Hill.jpg/960px-The_Forbidden_City_-_View_from_Jingshan_Hill.jpg',
+  'terra-cotta': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Terracotta_Army_at_the_Museum_of_Qin_Terra-cotta_Warriors_and_Horses.jpg/960px-Terracotta_Army_at_the_Museum_of_Qin_Terra-cotta_Warriors_and_Horses.jpg',
+  'terracotta-army': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Terracotta_Army_at_the_Museum_of_Qin_Terra-cotta_Warriors_and_Horses.jpg/960px-Terracotta_Army_at_the_Museum_of_Qin_Terra-cotta_Warriors_and_Horses.jpg',
+  'su-garden': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Humble_Administrator%27s_Garden.jpg/960px-Humble_Administrator%27s_Garden.jpg',
+  'suzhou-garden': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Humble_Administrator%27s_Garden.jpg/960px-Humble_Administrator%27s_Garden.jpg',
+  'summer-palace': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Summer_palace_beijing.jpg/960px-Summer_palace_beijing.jpg',
+  'yueyang-tower': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Yueyang_Tower.jpg/960px-Yueyang_Tower.jpg',
+};
+
+const COMPANION_AVATARS = {
+  'su-dongpo': 'https://api.dicebear.com/7.x/notionists/svg?seed=su-dongpo&backgroundColor=d4af37',
+  'lin-huiyin': 'https://api.dicebear.com/7.x/notionists/svg?seed=lin-huiyin&backgroundColor=f5a623',
+  'gentle-lady': 'https://api.dicebear.com/7.x/notionists/svg?seed=gentle-lady&backgroundColor=152238',
+  'sharp-elder': 'https://api.dicebear.com/7.x/notionists/svg?seed=sharp-elder&backgroundColor=111d2f',
+  'sarcastic-guy': 'https://api.dicebear.com/7.x/notionists/svg?seed=sharp-elder&backgroundColor=111d2f',
+};
+
 const stories = [
   {
     id: 'west-lake-bridge',
@@ -5,7 +25,7 @@ const stories = [
     location: { name: '杭州西湖', lat: 30.2575, lng: 120.143 },
     duration: 5,
     description: '白娘子与许仙的相遇之地，一座桥承载千年浪漫。',
-    coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=west%20lake%20broken%20bridge%20hangzhou%20chinese%20landscape%20painting%20misty%20morning&image_size=square',
+    coverImage: STORY_COVER_IMAGES['west-lake-bridge'],
     defaultCompanionId: 'gentle-lady',
     tags: ['历史', '传说', '爱情'],
     distance: 0,
@@ -22,7 +42,7 @@ const stories = [
     location: { name: '北京故宫', lat: 39.9163, lng: 116.3972 },
     duration: 8,
     description: '紫禁城的核心，龙椅背后的权谋与荣耀。',
-    coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=forbidden%20city%20hall%20of%20supreme%20harmony%20beijing%20china%20imperial%20palace&image_size=square',
+    coverImage: STORY_COVER_IMAGES['forbidden-city'],
     defaultCompanionId: 'su-dongpo',
     tags: ['历史', '建筑', '宫廷'],
     distance: 0,
@@ -39,7 +59,7 @@ const stories = [
     location: { name: '西安兵马俑', lat: 34.3849, lng: 109.2782 },
     duration: 6,
     description: '两千年前的地下军团，秦始皇的永恒守卫。',
-    coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=terracotta%20warriors%20xian%20china%20ancient%20army%20museum&image_size=square',
+    coverImage: STORY_COVER_IMAGES['terra-cotta'],
     defaultCompanionId: 'su-dongpo',
     tags: ['历史', '考古', '秦朝'],
     distance: 0,
@@ -56,7 +76,7 @@ const stories = [
     location: { name: '苏州拙政园', lat: 31.3284, lng: 120.6328 },
     duration: 5,
     description: '江南园林之首，一窗一景皆是诗。',
-    coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=suzhou%20garden%20humble%20administrators%20garden%20chinese%20classical%20garden&image_size=square',
+    coverImage: STORY_COVER_IMAGES['su-garden'],
     defaultCompanionId: 'lin-huiyin',
     tags: ['文化', '园林', '建筑'],
     distance: 0,
@@ -73,7 +93,7 @@ const companions = [
   {
     id: 'su-dongpo',
     name: '苏东坡',
-    avatar: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=ancient%20chinese%20poet%20su%20dongpo%20portrait%20song%20dynasty%20scholar&image_size=square',
+    avatar: COMPANION_AVATARS['su-dongpo'],
     persona: '豪放风趣',
     description: '北宋大文豪，诗词书画样样精通。他会用幽默风趣的方式，带你穿越历史，笑看风云。',
     voiceStyle: '浑厚男声，略带豪放',
@@ -82,7 +102,7 @@ const companions = [
   {
     id: 'lin-huiyin',
     name: '林徽因',
-    avatar: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=chinese%20female%20architect%20lin%20huiyin%20republic%20of%20china%20era%20elegant%20woman&image_size=square',
+    avatar: COMPANION_AVATARS['lin-huiyin'],
     persona: '知性优雅',
     description: '中国第一位女建筑师，兼具才情与美貌。她会用细腻的视角，为你讲述建筑与文学的交融之美。',
     voiceStyle: '温柔女声，知性优雅',
@@ -91,7 +111,7 @@ const companions = [
   {
     id: 'gentle-lady',
     name: '温柔女士',
-    avatar: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=gentle%20woman%20portrait%20soft%20smile%20warm%20light%20elegant%20style&image_size=square',
+    avatar: COMPANION_AVATARS['gentle-lady'],
     persona: '温柔治愈',
     description: '温柔如水的旅伴，声音软糯，讲故事像哄你入睡。适合在疲惫时，让她陪你慢慢走。',
     voiceStyle: '软糯女声，治愈系',
@@ -100,7 +120,7 @@ const companions = [
   {
     id: 'sarcastic-guy',
     name: '毒舌老炮',
-    avatar: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=tough%20middle%20aged%20man%20beard%20leather%20jacket%20sunglasses%20cool%20guy&image_size=square',
+    avatar: COMPANION_AVATARS['sarcastic-guy'],
     persona: '犀利毒舌',
     description: '北京老炮儿，说话直来直去，专揭历史的短。适合喜欢听真话、不怕被怼的朋友。',
     voiceStyle: '低沉男声，京味儿十足',
