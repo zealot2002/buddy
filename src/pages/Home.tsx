@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Play, MapPin, ChevronRight, Sparkles } from 'lucide-react';
+import { Play, MapPin, ChevronRight, Sparkles, BookOpen } from 'lucide-react';
 import { Header } from '../components/Header';
 import { StoryCard } from '../components/StoryCard';
 import { useLocationStore } from '../store/location';
@@ -69,6 +69,13 @@ export const Home = () => {
                 <Play className="w-5 h-5" />
                 {nearbyLoading ? '加载中...' : '一键播放'}
               </button>
+              <button 
+                onClick={() => navigate('/stories')}
+                className="gold-outline-button flex items-center gap-2 mt-3"
+              >
+                <BookOpen className="w-5 h-5" />
+                浏览故事
+              </button>
             </div>
           </div>
         </section>
@@ -76,7 +83,10 @@ export const Home = () => {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-serif text-xl font-bold text-light-blue">附近故事</h2>
-            <button className="flex items-center gap-1 text-sm text-gold hover:text-amber transition-colors">
+            <button 
+              onClick={() => navigate('/stories')}
+              className="flex items-center gap-1 text-sm text-gold hover:text-amber transition-colors"
+            >
               查看全部 <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -105,7 +115,10 @@ export const Home = () => {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-serif text-xl font-bold text-light-blue">热门故事</h2>
-            <button className="flex items-center gap-1 text-sm text-gold hover:text-amber transition-colors">
+            <button 
+              onClick={() => navigate('/stories')}
+              className="flex items-center gap-1 text-sm text-gold hover:text-amber transition-colors"
+            >
               查看全部 <ChevronRight className="w-4 h-4" />
             </button>
           </div>

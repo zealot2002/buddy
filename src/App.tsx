@@ -6,6 +6,7 @@ import { Favorites } from "@/pages/Favorites";
 import { StoryPlayer } from "@/pages/StoryPlayer";
 import { Profile } from "@/pages/Profile";
 import { MapPage } from "@/pages/MapPage";
+import { StoriesPage } from "@/pages/StoriesPage";
 import { BottomNav } from "@/components/BottomNav";
 
 const MainApp = () => {
@@ -15,6 +16,7 @@ const MainApp = () => {
     <div className="min-h-screen bg-deep-navy">
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/stories" element={<StoriesPage />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/companions" element={<Companions />} />
         <Route path="/routes" element={<RoutesPage />} />
