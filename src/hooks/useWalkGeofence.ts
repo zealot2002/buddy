@@ -9,6 +9,7 @@ interface WalkPlayPayload {
   companionId: string;
   content: string;
   duration: number;
+  triggerType?: 'auto' | 'tap' | 'offsite';
 }
 
 interface UseWalkGeofenceOptions {
@@ -25,9 +26,13 @@ async function fetchNearbyMetas(lat: number, lng: number): Promise<WalkSnippetMe
   return res.json();
 }
 
-async function fetchWalkPlay(snippetId: string, companionId: string): Promise<WalkPlayPayload> {
+async function fetchWalkPlay(
+  snippetId: string,
+  companionId: string,
+  trigger: 'auto' | 'tap' = 'auto',
+): Promise<WalkPlayPayload> {
   const res = await fetch(
-    `${API_BASE}/walk/${snippetId}/play?companionId=${encodeURIComponent(companionId)}`,
+    `${API_BASE}/walk/${snippetId}/play?companionId=${encodeURIComponent(companionId)}&trigger=${trigger}`,
   );
   if (!res.ok) throw new Error('Failed to fetch walk snippet content');
   return res.json();
@@ -70,7 +75,7 @@ export function useWalkGeofence({
         triggeredRef.current.add(meta.id);
 
         try {
-          const payload = await fetchWalkPlay(meta.id, companionId);
+          const payload = await fetchWalkPlay(meta.id, companionId, 'auto');
           onTriggerRef.current(payload, meta);
         } catch (error) {
           console.error('joyjoy walk play fetch failed:', error);

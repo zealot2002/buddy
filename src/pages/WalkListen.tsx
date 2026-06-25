@@ -52,9 +52,12 @@ export const WalkListen = () => {
   }, [messages]);
 
   const handleSnippet = useCallback(
-    (payload: { snippetId: string; content: string; duration: number }, source: 'geofence' | 'tap') => {
+    (
+      payload: { snippetId: string; content: string; duration: number; triggerType?: string },
+      source: 'geofence' | 'tap',
+    ) => {
       addMessage({ role: 'companion', content: payload.content, source });
-      playWalk(payload, companionId, true);
+      playWalk(payload, companionId, source === 'geofence');
     },
     [addMessage, playWalk, companionId],
   );
@@ -77,8 +80,8 @@ export const WalkListen = () => {
     } catch (error) {
       console.error('joyjoy walk tap failed:', error);
       addMessage({
-        role: 'system',
-        content: '附近暂时没有感言，继续走走，到了故事发生的地方我再跟你说。',
+        role: 'companion',
+        content: '（信号飘了一下）稍等，我重新组织语言…你再点我一次？',
         source: 'tap',
       });
     } finally {
@@ -99,7 +102,7 @@ export const WalkListen = () => {
     if (messages.length === 0) {
       addMessage({
         role: 'system',
-        content: '欢迎来到边走边听。你不能打字，但可以随时点旅伴头像，听听 ta 想说什么。',
+        content: '欢迎来到边走边听。到了景点我会主动开口；不在景点时，点旅伴头像，听听 ta 的调皮话。',
       });
     }
   }, [messages.length, addMessage]);

@@ -2,11 +2,13 @@ import { writeFileSync } from 'node:fs';
 import { stories } from '../api/data/stories.js';
 import { companions } from '../api/data/companions.js';
 import { walkSnippets } from '../api/data/walk-snippets.js';
+import { WALK_OFFSITE_CHATTER } from '../api/data/walk-offsite-chatter.js';
 
 const payload = {
   stories,
   companions,
   walkSnippets,
+  walkOffsiteChatter: WALK_OFFSITE_CHATTER,
 };
 
 writeFileSync(

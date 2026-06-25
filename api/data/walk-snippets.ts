@@ -14,7 +14,10 @@ export interface WalkScriptVariant {
 }
 
 export interface WalkCompanionScripts {
-  variants: WalkScriptVariant[];
+  /** 场景A：围栏自动触发，与眼前画面强绑定 */
+  auto: { variants: WalkScriptVariant[] };
+  /** 场景B：围栏内点击头像，延伸解读，与 auto 不同稿 */
+  tap: { variants: WalkScriptVariant[] };
 }
 
 export interface WalkSnippet {
@@ -35,6 +38,8 @@ export interface WalkSnippetMeta {
   radius: number;
 }
 
+export type WalkTriggerType = 'auto' | 'tap' | 'offsite';
+
 export interface WalkPlayPayload {
   snippetId: string;
   companionId: string;
@@ -42,6 +47,7 @@ export interface WalkPlayPayload {
   content: string;
   styleNote: string;
   duration: number;
+  triggerType: WalkTriggerType;
 }
 
 const COMPANION_IDS = ['su-dongpo', 'lin-huiyin', 'gentle-lady', 'sharp-elder'] as const;
@@ -53,26 +59,40 @@ function splitIntoParts(content: string, partIndex: number, totalParts: number):
   return sentences.slice(start, start + chunkSize).join('').trim() || content;
 }
 
-function buildScriptsForPart(
+function buildScriptsForFence(
   narrations: Record<string, NarrationScript[]>,
-  partIndex: number,
+  autoPartIndex: number,
   totalParts: number,
 ): Record<string, WalkCompanionScripts> {
   const scripts: Record<string, WalkCompanionScripts> = {};
+  const tapPartIndex = (autoPartIndex + 1) % totalParts;
 
   for (const companionId of COMPANION_IDS) {
     const primary = narrations[companionId]?.[0];
     if (!primary) continue;
 
-    const partContent = splitIntoParts(primary.content, partIndex, totalParts);
+    const autoContent = splitIntoParts(primary.content, autoPartIndex, totalParts);
+    const tapContent = splitIntoParts(primary.content, tapPartIndex, totalParts);
+
     scripts[companionId] = {
-      variants: [
-        {
-          versionId: `${primary.versionId}-part-${partIndex + 1}`,
-          content: partContent,
-          styleNote: primary.styleNote,
-        },
-      ],
+      auto: {
+        variants: [
+          {
+            versionId: `${primary.versionId}-auto-${autoPartIndex + 1}`,
+            content: autoContent,
+            styleNote: primary.styleNote,
+          },
+        ],
+      },
+      tap: {
+        variants: [
+          {
+            versionId: `${primary.versionId}-tap-${tapPartIndex + 1}`,
+            content: tapContent,
+            styleNote: `${primary.styleNote} · 延伸解读`,
+          },
+        ],
+      },
     };
   }
 
@@ -102,7 +122,7 @@ export const walkSnippets: WalkSnippet[] = [
       lng: fence.lng,
       radiusMeters: 30,
     },
-    scripts: buildScriptsForPart(FORBIDDEN_CITY_NARRATIONS, index, FORBIDDEN_FENCES.length),
+    scripts: buildScriptsForFence(FORBIDDEN_CITY_NARRATIONS, index, FORBIDDEN_FENCES.length),
   })),
   ...SUMMER_FENCES.map((fence, index) => ({
     id: fence.id,
@@ -112,12 +132,22 @@ export const walkSnippets: WalkSnippet[] = [
       lng: fence.lng,
       radiusMeters: 35,
     },
-    scripts: buildScriptsForPart(SUMMER_PALACE_NARRATIONS, index, SUMMER_FENCES.length),
+    scripts: buildScriptsForFence(SUMMER_PALACE_NARRATIONS, index, SUMMER_FENCES.length),
   })),
 ];
 
 export function findWalkSnippet(id: string): WalkSnippet | undefined {
   return walkSnippets.find((snippet) => snippet.id === id);
+}
+
+export function findActiveWalkSnippet(lat: number, lng: number): WalkSnippet | undefined {
+  return walkSnippets
+    .map((snippet) => ({
+      snippet,
+      distance: haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
+    }))
+    .filter(({ snippet, distance }) => distance <= snippet.location.radiusMeters)
+    .sort((a, b) => a.distance - b.distance)[0]?.snippet;
 }
 
 export function toWalkSnippetMeta(snippet: WalkSnippet): WalkSnippetMeta {
@@ -132,16 +162,18 @@ export function toWalkSnippetMeta(snippet: WalkSnippet): WalkSnippetMeta {
 export function resolveWalkPlay(
   snippetId: string,
   companionId: string,
+  trigger: 'auto' | 'tap' = 'auto',
 ): WalkPlayPayload | null {
   const snippet = findWalkSnippet(snippetId);
   if (!snippet) return null;
 
   const normalizedId = normalizeCompanionId(companionId);
   const companionScripts = snippet.scripts[normalizedId];
-  if (!companionScripts?.variants.length) return null;
+  const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
+  if (!pool?.variants.length) return null;
 
   const picked = pickRandomScript(
-    companionScripts.variants.map((variant) => ({
+    pool.variants.map((variant) => ({
       versionId: variant.versionId,
       content: variant.content,
       styleNote: variant.styleNote ?? '',
@@ -155,6 +187,7 @@ export function resolveWalkPlay(
     content: picked.content,
     styleNote: picked.styleNote,
     duration: estimateSpeechDuration(picked.content),
+    triggerType: trigger,
   };
 }
 

@@ -1,6 +1,6 @@
 import data from './stories-data.json';
 
-const { stories, companions, walkSnippets = [] } = data;
+const { stories, companions, walkSnippets = [], walkOffsiteChatter = {} } = data;
 
 const STORY_ID_ALIASES = {
   'forbidden-city': 'forbidden-city-hall',
@@ -38,15 +38,18 @@ function pickRandomVariant(variants) {
   return variants[Math.floor(Math.random() * variants.length)];
 }
 
-function resolveWalkPlay(snippetId, companionId) {
+function resolveWalkPlay(snippetId, companionId, trigger = 'auto') {
   const snippet = walkSnippets.find((item) => item.id === snippetId);
   if (!snippet) return null;
 
   const normalizedId = normalizeCompanionId(companionId);
   const companionScripts = snippet.scripts?.[normalizedId];
-  if (!companionScripts?.variants?.length) return null;
+  const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
+  const legacyPool = companionScripts?.variants;
+  const variants = pool?.variants || legacyPool;
+  if (!variants?.length) return null;
 
-  const picked = pickRandomVariant(companionScripts.variants);
+  const picked = pickRandomVariant(variants);
   const duration = Math.max(45, Math.ceil((picked.content?.length || 0) / 4.5));
 
   return {
@@ -56,6 +59,24 @@ function resolveWalkPlay(snippetId, companionId) {
     content: picked.content,
     styleNote: picked.styleNote || '',
     duration,
+    triggerType: trigger,
+  };
+}
+
+function resolveOffsiteChatter(companionId) {
+  const normalizedId = normalizeCompanionId(companionId);
+  const scripts = walkOffsiteChatter[normalizedId] || walkOffsiteChatter['su-dongpo'] || [];
+  const picked = pickRandomVariant(scripts);
+  const duration = Math.max(45, Math.ceil((picked.content?.length || 0) / 4.5));
+
+  return {
+    snippetId: 'offsite-chatter',
+    companionId: normalizedId,
+    versionId: picked.versionId,
+    content: picked.content,
+    styleNote: picked.styleNote || '',
+    duration,
+    triggerType: 'offsite',
   };
 }
 
@@ -117,16 +138,13 @@ export async function onRequest(context) {
         const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');
 
         const activeSnippet = findActiveSnippet(lat, lng);
-        const nearestMeta = getNearbyWalkMetas(lat, lng, 1)[0];
-        const snippetId = activeSnippet?.id || nearestMeta?.id;
-
-        if (!snippetId) {
-          return Response.json({ error: 'No walk snippets available' }, { status: 404, headers: corsHeaders });
+        if (!activeSnippet) {
+          return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
-        const payload = resolveWalkPlay(snippetId, companionId);
+        const payload = resolveWalkPlay(activeSnippet.id, companionId, 'tap');
         if (!payload) {
-          return Response.json({ error: 'Walk snippet not found' }, { status: 404, headers: corsHeaders });
+          return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
         return Response.json(payload, { headers: corsHeaders });
@@ -135,7 +153,8 @@ export async function onRequest(context) {
       const playMatch = path.match(/^\/api\/walk\/([^/]+)\/play$/);
       if (playMatch) {
         const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');
-        const payload = resolveWalkPlay(playMatch[1], companionId);
+        const trigger = url.searchParams.get('trigger') === 'tap' ? 'tap' : 'auto';
+        const payload = resolveWalkPlay(playMatch[1], companionId, trigger);
         if (!payload) {
           return Response.json({ error: 'Walk snippet not found' }, { status: 404, headers: corsHeaders });
         }
