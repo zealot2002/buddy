@@ -1,4 +1,4 @@
-import { Home, Users, Navigation, Heart } from 'lucide-react';
+import { Home, User } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 interface BottomNavProps {
@@ -7,9 +7,7 @@ interface BottomNavProps {
 
 const navItems = [
   { path: '/', icon: Home, label: '首页' },
-  { path: '/companions', icon: Users, label: '旅伴' },
-  { path: '/routes', icon: Navigation, label: '路线' },
-  { path: '/favorites', icon: Heart, label: '收藏' },
+  { path: '/profile', icon: User, label: '我的' },
 ];
 
 export const BottomNav = ({ onNavigate }: BottomNavProps) => {
@@ -26,7 +24,7 @@ export const BottomNav = ({ onNavigate }: BottomNavProps) => {
             <button
               key={item.path}
               onClick={() => onNavigate(item.path)}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-300 ${
+              className={`flex flex-col items-center gap-1 px-8 py-2 rounded-xl transition-all duration-300 ${
                 isActive 
                   ? 'text-gold bg-gold/10' 
                   : 'text-gray-500 hover:text-light-blue hover:bg-card-border/50'

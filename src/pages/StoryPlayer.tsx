@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, Heart, Share2, Volume2, VolumeX,
-  SkipBack, SkipForward, MapPin, Clock, ChevronDown, ChevronUp
+  SkipBack, SkipForward, MapPin, Clock, ChevronDown, ChevronUp,
+  User, ChevronRight
 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useStory, useCompanion } from '../hooks/useApi';
@@ -204,6 +205,35 @@ export const StoryPlayer = () => {
                 }}
               />
               <span className="text-xs text-gray-400 w-8">{volume}%</span>
+            </div>
+          )}
+        </div>
+
+        <div 
+          className="bg-card-bg rounded-2xl p-5 border border-card-border mb-6 cursor-pointer hover:border-gold/50 transition-colors"
+          onClick={() => navigate('/companions')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center">
+                <User className="w-6 h-6 text-gold" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 mb-0.5">当前旅伴</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-serif font-semibold text-light-blue">{companion?.name || '未知旅伴'}</span>
+                  <span className="px-2 py-0.5 text-xs bg-amber/20 text-amber rounded-full">讲解中</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">更换</span>
+              <ChevronRight className="w-5 h-5 text-gray-500" />
+            </div>
+          </div>
+          {companion && (
+            <div className="mt-3 pt-3 border-t border-card-border">
+              <p className="text-sm text-gray-400 line-clamp-2">{companion.description}</p>
             </div>
           )}
         </div>
