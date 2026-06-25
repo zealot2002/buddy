@@ -23,6 +23,7 @@ export const StoryPlayer = () => {
     currentCompanionId, 
     isPlaying, 
     progress, 
+    duration,
     play, 
     pause, 
     toggle, 
@@ -49,29 +50,12 @@ export const StoryPlayer = () => {
     }
   }, [story, currentStory, companionIdFromUrl, currentCompanionId, switchCompanion]);
 
-  useEffect(() => {
-    if (!isPlaying) return;
-    
-    const duration = currentNarrator?.duration || currentStory?.duration || 0;
-    const interval = setInterval(() => {
-      if (duration > 0 && progress < duration) {
-        setProgress(progress + 1);
-      } else if (duration > 0 && progress >= duration) {
-        pause();
-        setProgress(duration);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentStory, currentNarrator, progress, pause, setProgress]);
-
   const handleProgressClick = (e: React.MouseEvent) => {
     if (!progressRef.current) return;
-    const duration = currentNarrator?.duration || currentStory?.duration || 0;
     
     const rect = progressRef.current.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
-    setProgress(Math.floor(percent * duration));
+    setProgress(Math.floor(percent * 100));
   };
 
   const formatTime = (seconds: number) => {
@@ -101,8 +85,9 @@ export const StoryPlayer = () => {
   }
 
   const isFavorite = isStoryFavorite(story.id);
-  const displayDuration = currentNarrator?.duration || story.duration;
-  const progressPercent = displayDuration > 0 ? (progress / displayDuration) * 100 : 0;
+  const displayDuration = duration || (currentNarrator?.duration || story.duration) * 60;
+  const progressPercent = progress;
+  const currentTimeSeconds = Math.floor((progress / 100) * displayDuration);
   const currentCompanion = companions.find((c) => c.id === currentCompanionId);
 
   return (
@@ -148,7 +133,7 @@ export const StoryPlayer = () => {
                 <div className="flex items-center gap-3 text-sm text-gray-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    {formatTime(progress)} / {formatTime(displayDuration)}
+                    {formatTime(currentTimeSeconds)} / {formatTime(displayDuration)}
                   </span>
                 </div>
               </div>

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "error_pages": {
+    "404": "/index.html"
+  },
+  "routes": [
+    {
+      "src": "/api/*",
+      "dest": "/api/$1"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ export interface NarratorVersion {
   duration: number;
   content: string;
   styleNote: string;
+  audioUrl?: string;
 }
 
 export interface Story {
