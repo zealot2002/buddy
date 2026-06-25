@@ -11,6 +11,7 @@ import cors from 'cors'
 import path from 'path'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
+import { createProxyMiddleware } from 'http-proxy-middleware'
 import authRoutes from './routes/auth.js'
 import storiesRoutes from './routes/stories.js'
 import companionsRoutes from './routes/companions.js'
@@ -36,6 +37,15 @@ app.use('/api/auth', authRoutes)
 app.use('/api/stories', storiesRoutes)
 app.use('/api/companions', companionsRoutes)
 app.use('/api/routes', routesRoutes)
+
+app.use('/api/map-tiles', createProxyMiddleware({
+  target: 'https://cartocdn.com',
+  changeOrigin: true,
+  pathRewrite: { '^/api/map-tiles': '' },
+  headers: {
+    'Referer': 'https://cartocdn.com',
+  },
+}))
 
 /**
  * health

@@ -5,6 +5,7 @@ import { Routes as RoutesPage } from "@/pages/Routes";
 import { Favorites } from "@/pages/Favorites";
 import { StoryPlayer } from "@/pages/StoryPlayer";
 import { Profile } from "@/pages/Profile";
+import { MapPage } from "@/pages/MapPage";
 import { BottomNav } from "@/components/BottomNav";
 
 const MainApp = () => {
@@ -19,6 +20,7 @@ const MainApp = () => {
         <Route path="/routes" element={<RoutesPage />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/story/:id" element={<StoryPlayer />} />
+        <Route path="/map" element={<MapPage />} />
       </Routes>
       <BottomNav onNavigate={navigate} />
     </div>

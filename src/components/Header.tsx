@@ -1,8 +1,10 @@
 import { MapPin, Search, User } from 'lucide-react';
 import { useLocationStore } from '../store/location';
+import { useNavigate } from 'react-router-dom';
 
 export const Header = () => {
   const { city, isLocating } = useLocationStore();
+  const navigate = useNavigate();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-deep-navy/80 backdrop-blur-md border-b border-card-border">
@@ -15,7 +17,10 @@ export const Header = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-card-bg border border-card-border text-light-blue text-sm">
+          <button 
+            onClick={() => navigate('/map')}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-card-bg border border-card-border text-light-blue text-sm hover:border-gold/50 transition-colors"
+          >
             <MapPin className={`w-4 h-4 text-gold ${isLocating ? 'animate-pulse' : ''}`} />
             <span>{city}</span>
           </button>
