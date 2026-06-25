@@ -1,5 +1,8 @@
 import { STORY_COVER_IMAGES } from './media.js';
-import { forbiddenCityNarrators, summerPalaceNarrators } from './story-narrators.js';
+import {
+  forbiddenCityCityNarrators,
+  summerPalaceCityNarrators,
+} from './city-narrators.js';
 
 export interface NarratorVariant {
   versionId: string;
@@ -95,7 +98,7 @@ export const stories: Story[] = [
     coverImage: STORY_COVER_IMAGES['forbidden-city-hall'],
     defaultCompanionId: 'su-dongpo',
     tags: ['历史', '宫廷', '建筑'],
-    narrators: forbiddenCityNarrators,
+    narrators: forbiddenCityCityNarrators,
   },
   {
     id: 'suzhou-garden',
@@ -193,7 +196,7 @@ export const stories: Story[] = [
     coverImage: STORY_COVER_IMAGES['summer-palace'],
     defaultCompanionId: 'gentle-lady',
     tags: ['皇家', '园林', '近代史'],
-    narrators: summerPalaceNarrators,
+    narrators: summerPalaceCityNarrators,
   },
   {
     id: 'yueyang-tower',

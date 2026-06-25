@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import authRoutes from './routes/auth.js'
 import storiesRoutes from './routes/stories.js'
+import walkRoutes from './routes/walk.js'
 import companionsRoutes from './routes/companions.js'
 import ttsRoutes from './routes/tts.js'
 
@@ -35,6 +36,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
  */
 app.use('/api/auth', authRoutes)
 app.use('/api/stories', storiesRoutes)
+app.use('/api/walk', walkRoutes)
 app.use('/api/companions', companionsRoutes)
 app.use('/api/tts', ttsRoutes)
 

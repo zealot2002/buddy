@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Story, NarratorVersion } from '../../api/data/stories.js';
+import type { Story } from '../../api/data/stories.js';
 import { normalizeCompanionId } from '../../api/data/narrations.js';
 import {
   findNarratorForCompanion,
@@ -7,20 +7,34 @@ import {
   type ResolvedNarrator,
 } from '../../api/data/narration-utils.js';
 
+export type PlayerMode = 'city' | 'walk' | 'playlist';
+
+interface WalkPayload {
+  snippetId: string;
+  content: string;
+  duration: number;
+}
+
 interface PlayerState {
+  mode: PlayerMode;
   currentStory: Story | null;
   currentNarrator: ResolvedNarrator | null;
   currentCompanionId: string | null;
+  walkContent: string | null;
+  walkSnippetId: string | null;
   isPlaying: boolean;
   progress: number;
   volume: number;
   duration: number;
-  play: (story: Story, companionId?: string) => void;
+  onEnded: (() => void) | null;
+  play: (story: Story, companionId?: string, mode?: PlayerMode) => void;
+  playWalk: (payload: WalkPayload, companionId: string, interrupt?: boolean) => void;
   pause: () => void;
   toggle: () => void;
   setProgress: (progress: number) => void;
   setVolume: (volume: number) => void;
   switchCompanion: (companionId: string) => void;
+  setOnEnded: (callback: (() => void) | null) => void;
   stop: () => void;
 }
 
@@ -64,6 +78,7 @@ const bindAudioEvents = (
 
   audio.addEventListener('ended', () => {
     set({ isPlaying: false, progress: 100 });
+    get().onEnded?.();
   });
 
   audio.addEventListener('error', () => {
@@ -80,6 +95,7 @@ const bindAudioEvents = (
       if (state.progress >= 100) {
         clearFallbackTimer();
         set({ isPlaying: false, progress: 100 });
+        get().onEnded?.();
         return;
       }
       set({
@@ -89,18 +105,55 @@ const bindAudioEvents = (
   });
 };
 
-const startAudio = (
-  story: Story,
-  companionId: string,
-  set: (partial: Partial<PlayerState> | ((state: PlayerState) => Partial<PlayerState>)) => void,
-  get: () => PlayerState,
-) => {
+const stopCurrentAudio = () => {
   clearFallbackTimer();
-
   if (audioElement) {
     audioElement.pause();
     audioElement = null;
   }
+};
+
+const startContentAudio = (
+  content: string,
+  companionId: string,
+  duration: number,
+  mode: PlayerMode,
+  set: (partial: Partial<PlayerState> | ((state: PlayerState) => Partial<PlayerState>)) => void,
+  get: () => PlayerState,
+  extra: Partial<PlayerState>,
+) => {
+  stopCurrentAudio();
+
+  const normalizedId = normalizeCompanionId(companionId);
+  const audioUrl = `/api/tts?text=${encodeURIComponent(content)}&lang=zh-CN`;
+
+  audioElement = new Audio(audioUrl);
+  audioElement.volume = get().volume;
+
+  bindAudioEvents(audioElement, set, get, duration);
+
+  set({
+    mode,
+    currentCompanionId: normalizedId,
+    duration,
+    isPlaying: true,
+    progress: 0,
+    ...extra,
+  });
+
+  audioElement.play().catch((e) => {
+    console.error('joyjoy Playback failed:', e);
+  });
+};
+
+const startStoryAudio = (
+  story: Story,
+  companionId: string,
+  mode: PlayerMode,
+  set: (partial: Partial<PlayerState> | ((state: PlayerState) => Partial<PlayerState>)) => void,
+  get: () => PlayerState,
+) => {
+  stopCurrentAudio();
 
   const normalizedId = normalizeCompanionId(companionId);
   const rawNarrator = findNarratorForCompanion(story.narrators, normalizedId);
@@ -120,9 +173,12 @@ const startAudio = (
   bindAudioEvents(audioElement, set, get, fallbackDuration);
 
   set({
+    mode,
     currentStory: story,
     currentNarrator: narrator,
     currentCompanionId: normalizedId,
+    walkContent: null,
+    walkSnippetId: null,
     duration: fallbackDuration,
     isPlaying: true,
     progress: 0,
@@ -134,16 +190,40 @@ const startAudio = (
 };
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
+  mode: 'city',
   currentStory: null,
   currentNarrator: null,
   currentCompanionId: null,
+  walkContent: null,
+  walkSnippetId: null,
   isPlaying: false,
   progress: 0,
   volume: 0.8,
   duration: 0,
+  onEnded: null,
 
-  play: (story, companionId) => {
-    startAudio(story, companionId || story.defaultCompanionId, set, get);
+  play: (story, companionId, mode = 'city') => {
+    startStoryAudio(story, companionId || story.defaultCompanionId, mode, set, get);
+  },
+
+  playWalk: (payload, companionId, interrupt = true) => {
+    const { isPlaying, mode } = get();
+    if (isPlaying && mode === 'playlist' && !interrupt) return;
+
+    startContentAudio(
+      payload.content,
+      companionId,
+      payload.duration,
+      'walk',
+      set,
+      get,
+      {
+        currentStory: null,
+        currentNarrator: null,
+        walkContent: payload.content,
+        walkSnippetId: payload.snippetId,
+      },
+    );
   },
 
   pause: () => {
@@ -186,22 +266,43 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   switchCompanion: (companionId) => {
-    const { currentStory } = get();
+    const { currentStory, mode, walkContent, walkSnippetId, duration } = get();
+    if (mode === 'walk' && walkContent && walkSnippetId) {
+      startContentAudio(
+        walkContent,
+        companionId,
+        duration,
+        'walk',
+        set,
+        get,
+        {
+          currentStory: null,
+          currentNarrator: null,
+          walkContent,
+          walkSnippetId,
+        },
+      );
+      return;
+    }
     if (!currentStory) return;
-    startAudio(currentStory, companionId, set, get);
+    startStoryAudio(currentStory, companionId, mode, set, get);
   },
 
+  setOnEnded: (callback) => set({ onEnded: callback }),
+
   stop: () => {
-    clearFallbackTimer();
-    audioElement?.pause();
-    audioElement = null;
+    stopCurrentAudio();
     set({
+      mode: 'city',
       currentStory: null,
       currentNarrator: null,
       currentCompanionId: null,
+      walkContent: null,
+      walkSnippetId: null,
       isPlaying: false,
       progress: 0,
       duration: 0,
+      onEnded: null,
     });
   },
 }));

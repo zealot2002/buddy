@@ -1,4 +1,4 @@
-import { Home, User } from 'lucide-react';
+import { Compass, Footprints, User } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -7,7 +7,8 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { path: '/', icon: Home, label: '首页' },
+  { path: '/', icon: Compass, label: '发现' },
+  { path: '/walk', icon: Footprints, label: '边走边听' },
   { path: '/profile', icon: User, label: '我的' },
 ];
 

@@ -1,14 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { Home } from "@/pages/Home";
+import { Discover } from "@/pages/Discover";
+import { WalkListen } from "@/pages/WalkListen";
 import { Companions } from "@/pages/Companions";
 import { Favorites } from "@/pages/Favorites";
 import { StoryPlayer } from "@/pages/StoryPlayer";
 import { Profile } from "@/pages/Profile";
 import { MapPage } from "@/pages/MapPage";
 import { StoriesPage } from "@/pages/StoriesPage";
+import { PlaylistPage } from "@/pages/PlaylistPage";
 import { BottomNav } from "@/components/BottomNav";
 
-const MAIN_TAB_PATHS = ['/', '/profile'];
+const MAIN_TAB_PATHS = ['/', '/walk', '/profile'];
 
 const MainApp = () => {
   const navigate = useNavigate();
@@ -18,9 +20,11 @@ const MainApp = () => {
   return (
     <div className="app-shell">
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/stories" element={<StoriesPage />} />
+        <Route path="/" element={<Discover />} />
+        <Route path="/walk" element={<WalkListen />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/stories" element={<StoriesPage />} />
+        <Route path="/playlist" element={<PlaylistPage />} />
         <Route path="/companions" element={<Companions />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/story/:id" element={<StoryPlayer />} />
