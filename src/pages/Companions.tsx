@@ -1,15 +1,13 @@
-import { Heart, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PageContent, PageShell } from '../components/PageShell';
 import { useCompanions } from '../hooks/useApi';
-import { useFavoritesStore } from '../store/favorites';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Companion } from '../../api/data/companions.js';
 import { getCompanionAvatar } from '../../api/data/media.js';
 
 export const Companions = () => {
   const { companions, loading } = useCompanions();
-  const { isCompanionFavorite, addCompanion, removeCompanion } = useFavoritesStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const storyId = searchParams.get('storyId');
@@ -39,8 +37,6 @@ export const Companions = () => {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {companions.map((companion) => {
-              const isFavorite = isCompanionFavorite(companion.id);
-              
               return (
                 <div 
                   key={companion.id}
@@ -53,22 +49,6 @@ export const Companions = () => {
                       alt={companion.name}
                       className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full object-cover border-2 border-gold/30 group-active:border-gold transition-colors"
                     />
-                    <button 
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isFavorite) {
-                          removeCompanion(companion.id);
-                        } else {
-                          addCompanion(companion);
-                        }
-                      }}
-                      className={`absolute -bottom-1 -right-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-colors touch-target ${
-                        isFavorite ? 'bg-red-500' : 'bg-card-bg border border-card-border'
-                      }`}
-                    >
-                      <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFavorite ? 'fill-white text-white' : 'text-gray-400'}`} />
-                    </button>
                   </div>
                   
                   <h3 className="font-serif font-bold text-base sm:text-lg text-light-blue mb-1 line-clamp-1">{companion.name}</h3>
