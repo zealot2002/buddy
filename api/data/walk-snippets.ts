@@ -6,6 +6,7 @@ import {
   pickRandomScript,
   normalizeCompanionId,
 } from './narrations.js';
+import { SHENYANG_SANHAO_NARRATIONS } from './shenyang-sanhao-narrations.js';
 
 export interface WalkScriptVariant {
   versionId: string;
@@ -113,6 +114,15 @@ const SUMMER_FENCES = [
   { id: 'walk-sp-qikongqiao', lat: 39.9988, lng: 116.279 },
 ];
 
+/** 沈阳三好街测试围栏（WGS84），半径略大便于真机 GPS 触发 */
+const SANHAO_FENCES = [
+  { id: 'walk-sy-sanhao-wencui', lat: 41.75442, lng: 123.42005 },
+  { id: 'walk-sy-bainaohui', lat: 41.76307, lng: 123.428712 },
+  { id: 'walk-sy-huaqiang', lat: 41.762654, lng: 123.431419 },
+  { id: 'walk-sy-weiyong', lat: 41.761989, lng: 123.432507 },
+  { id: 'walk-sy-dongruan', lat: 41.761266, lng: 123.43412 },
+];
+
 export const walkSnippets: WalkSnippet[] = [
   ...FORBIDDEN_FENCES.map((fence, index) => ({
     id: fence.id,
@@ -133,6 +143,16 @@ export const walkSnippets: WalkSnippet[] = [
       radiusMeters: 35,
     },
     scripts: buildScriptsForFence(SUMMER_PALACE_NARRATIONS, index, SUMMER_FENCES.length),
+  })),
+  ...SANHAO_FENCES.map((fence, index) => ({
+    id: fence.id,
+    areaTag: 'shenyang-sanhao',
+    location: {
+      lat: fence.lat,
+      lng: fence.lng,
+      radiusMeters: 50,
+    },
+    scripts: buildScriptsForFence(SHENYANG_SANHAO_NARRATIONS, index, SANHAO_FENCES.length),
   })),
 ];
 
