@@ -202,7 +202,7 @@ export const WalkListen = () => {
           return (
             <div key={message.id} className="flex max-w-[88%] items-start gap-2">
               <img
-                src={getCompanionAvatar(companionId, companion?.avatar)}
+                src={getCompanionAvatar(companionId)}
                 alt={companion?.name || '旅伴'}
                 className="h-9 w-9 shrink-0 rounded-md bg-white object-cover"
               />
@@ -234,7 +234,7 @@ export const WalkListen = () => {
                     companionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
                   )}
                 >
-                  <img src={item.avatar} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
+                  <img src={getCompanionAvatar(item.id)} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
                   <span className="w-full truncate text-center text-[10px] text-gray-700">{item.name}</span>
                 </button>
               ))}
@@ -250,7 +250,7 @@ export const WalkListen = () => {
               className="flex min-w-0 flex-1 touch-target items-center gap-2"
             >
               <img
-                src={getCompanionAvatar(companionId, companion?.avatar)}
+                src={getCompanionAvatar(companionId)}
                 alt={companion?.name || '旅伴'}
                 onClick={(event) => {
                   event.stopPropagation();

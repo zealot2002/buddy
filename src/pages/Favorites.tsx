@@ -4,6 +4,7 @@ import { PageContent, PageShell } from '../components/PageShell';
 import { useFavoritesStore } from '../store/favorites';
 import { usePlayerStore } from '../store/player';
 import { useNavigate } from 'react-router-dom';
+import { getCompanionAvatar } from '../../api/data/media.js';
 
 export const Favorites = () => {
   const { stories, companions, removeStory, removeCompanion } = useFavoritesStore();
@@ -114,7 +115,7 @@ export const Favorites = () => {
                   className="companion-card"
                 >
                   <img 
-                    src={companion.avatar}
+                    src={getCompanionAvatar(companion.id)}
                     alt={companion.name}
                     className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full object-cover border-2 border-gold/30 mb-2"
                   />

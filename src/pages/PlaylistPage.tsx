@@ -6,7 +6,7 @@ import { usePlaylistStore } from '../store/playlist';
 import { usePlayerStore } from '../store/player';
 import { usePreferencesStore } from '../store/preferences';
 import { PageContent, PageShell } from '../components/PageShell';
-import { getStoryCoverImage } from '../../api/data/media.js';
+import { getStoryCoverImage, getCompanionAvatar } from '../../api/data/media.js';
 import { cn } from '@/lib/utils';
 
 export const PlaylistPage = () => {
@@ -145,7 +145,7 @@ export const PlaylistPage = () => {
                     : 'border-card-border bg-card-bg',
                 )}
               >
-                <img src={companion.avatar} alt={companion.name} className="w-10 h-10 rounded-full" />
+                <img src={getCompanionAvatar(companion.id)} alt={companion.name} className="w-10 h-10 rounded-full object-cover" />
                 <div className="min-w-0">
                   <p className="text-light-blue font-medium truncate">{companion.name}</p>
                   <p className="text-xs text-gray-500 truncate">{companion.style}</p>

@@ -4,6 +4,7 @@ import { PageContent, PageShell } from '../components/PageShell';
 import { useFavoritesStore } from '../store/favorites';
 import { usePreferencesStore } from '../store/preferences';
 import { useCompanions } from '../hooks/useApi';
+import { getCompanionAvatar } from '../../api/data/media.js';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -61,7 +62,7 @@ export const Profile = () => {
                     : 'border-card-border bg-card-bg',
                 )}
               >
-                <img src={companion.avatar} alt={companion.name} className="w-10 h-10 rounded-full shrink-0" />
+                <img src={getCompanionAvatar(companion.id)} alt={companion.name} className="w-10 h-10 rounded-full shrink-0 object-cover" />
                 <div className="min-w-0 flex-1">
                   <p className="text-light-blue font-medium truncate">{companion.name}</p>
                   <p className="text-xs text-gray-500 truncate">{companion.style}</p>

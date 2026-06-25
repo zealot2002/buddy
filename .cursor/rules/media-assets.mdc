@@ -1,0 +1,25 @@
+---
+description: 图片与头像资源规范（本地 PNG，禁止 SVG 外链）
+globs: public/images/**,api/data/media.ts,api/data/companions.ts
+alwaysApply: false
+---
+
+# 媒体资源规范
+
+## 旅伴头像
+
+- 存放路径：`public/images/avatars/`
+- 格式：**PNG 优先**（JPEG 可接受）；**禁止 SVG**
+- 引用方式：只在 `api/data/media.ts` 的 `COMPANION_AVATARS` 中维护路径，页面统一用 `getCompanionAvatar(companionId)`
+- **禁止**使用 dicebear、trae-api 等外链 URL 作为头像
+
+## 故事封面
+
+- 存放路径：`public/images/`
+- 引用方式：`getStoryCoverImage(storyId)`，路径写在 `STORY_COVER_IMAGES`
+
+## 新增旅伴头像
+
+1. 将 PNG 放入 `public/images/avatars/`，文件名与 companion id 一致，如 `su-dongpo.png`
+2. 在 `COMPANION_AVATARS` 增加 `{ 'companion-id': '/images/avatars/companion-id.png' }`
+3. 运行 `npm run sync:functions-data` 同步部署数据

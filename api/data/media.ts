@@ -1,4 +1,4 @@
-/** 稳定的封面与头像资源 */
+/** 稳定的封面与头像资源（均存 public/images/，禁止外链 SVG） */
 
 export const STORY_COVER_IMAGES: Record<string, string> = {
   'west-lake-bridge': '/images/west-lake-bridge.jpg',
@@ -9,21 +9,17 @@ export const STORY_COVER_IMAGES: Record<string, string> = {
   'yueyang-tower': '/images/yueyang-tower.jpg',
 };
 
+/** 旅伴头像：public/images/avatars/ 下本地 PNG/JPEG，按 companion id 映射 */
 export const COMPANION_AVATARS: Record<string, string> = {
-  'su-dongpo':
-    'https://api.dicebear.com/7.x/notionists/svg?seed=su-dongpo&backgroundColor=d4af37',
-  'lin-huiyin':
-    'https://api.dicebear.com/7.x/notionists/svg?seed=lin-huiyin&backgroundColor=f5a623',
-  'gentle-lady':
-    'https://api.dicebear.com/7.x/notionists/svg?seed=gentle-lady&backgroundColor=152238',
-  'sharp-elder':
-    'https://api.dicebear.com/7.x/notionists/svg?seed=sharp-elder&backgroundColor=111d2f',
+  'su-dongpo': '/images/avatars/su-dongpo.jpeg',
+  'lin-huiyin': '/images/avatars/lin-huiyin.jpeg',
+  'gentle-lady': '/images/avatars/gentle-lady.jpeg',
+  'sharp-elder': '/images/avatars/sharp-elder.png',
 };
 
 export const DEFAULT_STORY_COVER = '/images/west-lake-bridge.jpg';
 
-export const DEFAULT_AVATAR =
-  'https://api.dicebear.com/7.x/notionists/svg?seed=companion&backgroundColor=152238';
+export const DEFAULT_AVATAR = COMPANION_AVATARS['su-dongpo'];
 
 export const STORY_ID_ALIASES: Record<string, string> = {
   'forbidden-city': 'forbidden-city-hall',
@@ -36,12 +32,12 @@ export function getStoryCoverImage(storyId: string, fallback?: string): string {
   if (STORY_COVER_IMAGES[normalizedId]) {
     return STORY_COVER_IMAGES[normalizedId];
   }
-  if (fallback && !fallback.includes('trae-api')) {
+  if (fallback && fallback.startsWith('/images/')) {
     return fallback;
   }
   return DEFAULT_STORY_COVER;
 }
 
-export function getCompanionAvatar(companionId: string, fallback?: string): string {
-  return COMPANION_AVATARS[companionId] || fallback || DEFAULT_AVATAR;
+export function getCompanionAvatar(companionId: string, _fallback?: string): string {
+  return COMPANION_AVATARS[companionId] || DEFAULT_AVATAR;
 }

@@ -49,7 +49,7 @@ export const Companions = () => {
                 >
                   <div className="relative mb-2 sm:mb-3 mx-auto w-fit">
                     <img 
-                      src={getCompanionAvatar(companion.id, companion.avatar)}
+                      src={getCompanionAvatar(companion.id)}
                       alt={companion.name}
                       className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full object-cover border-2 border-gold/30 group-active:border-gold transition-colors"
                     />

@@ -271,7 +271,7 @@ export const StoryPlayer = () => {
                     <div className="flex items-center gap-2 sm:gap-3">
                       <div className="relative shrink-0">
                         <img 
-                          src={getCompanionAvatar(companion?.id || '', companion?.avatar)}
+                          src={getCompanionAvatar(companion?.id || '')}
                           alt={companion?.name}
                           className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ${
                             isActive ? 'ring-2 ring-gold ring-offset-1 sm:ring-offset-2 ring-offset-card-bg' : ''
