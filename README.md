@@ -79,8 +79,8 @@
 | 功能模块 | 说明 |
 |---------|------|
 | 用户信息 | 头像、昵称展示 |
-| 收藏统计 | 收藏故事、收藏旅伴、收藏路线数量 |
-| 功能菜单 | 我的旅伴、收藏故事、我的路线、设置、帮助与反馈 |
+| 收藏统计 | 收藏故事、收藏旅伴数量 |
+| 功能菜单 | 我的旅伴、收藏故事、设置、帮助与反馈 |
 | 关于应用 | 版本信息展示 |
 
 ### 7. 收藏页面 (`/favorites`)
@@ -89,14 +89,6 @@
 |---------|------|
 | 收藏故事列表 | 展示用户收藏的故事 |
 | 收藏旅伴列表 | 展示用户收藏的旅伴 |
-| 收藏路线列表 | 展示用户收藏的路线 |
-
-### 8. 路线页面 (`/routes`)
-
-| 功能模块 | 说明 |
-|---------|------|
-| 路线列表 | 展示推荐路线 |
-| 路线详情 | 点击查看路线详情 |
 
 ---
 
@@ -133,12 +125,10 @@
 │   ├── index.ts                  # API 入口
 │   ├── data/                     # 模拟数据
 │   │   ├── stories.ts            # 故事数据（含4个故事）
-│   │   ├── companions.ts         # 旅伴数据（含4位旅伴）
-│   │   └── routes.ts             # 路线数据
+│   │   └── companions.ts         # 旅伴数据（含4位旅伴）
 │   ├── routes/                   # API 路由
 │   │   ├── stories.ts            # 故事 API
 │   │   ├── companions.ts         # 旅伴 API
-│   │   ├── routes.ts             # 路线 API
 │   │   ├── auth.ts               # 认证 API
 │   │   └── tts.ts                # TTS 语音合成 API
 │   └── worker.ts                 # Cloudflare Worker（备用）
@@ -166,7 +156,6 @@
 │   │   ├── Companions.tsx        # 旅伴选择页
 │   │   ├── MapPage.tsx           # 地图选址页
 │   │   ├── Profile.tsx           # 我的页面
-│   │   ├── Routes.tsx            # 路线页面
 │   │   └── Favorites.tsx         # 收藏页面
 │   ├── store/                    # Zustand 状态管理
 │   │   ├── player.ts             # 播放器状态（HTML5 Audio）
@@ -175,4 +164,420 @@
 │   ├── App.tsx                   # 应用入口（路由配置）
 │   ├── main.tsx                  # React 渲染入口
 │   └── index.css                 # 全局样式（TailwindCSS）
-├── wr
+├── wrangler.toml                 # Cloudflare 部署配置
+├── vite.config.ts                # Vite 配置
+├── tailwind.config.js            # TailwindCSS 配置
+├── postcss.config.js             # PostCSS 配置
+├── tsconfig.json                 # TypeScript 配置
+├── package.json                  # 项目依赖和脚本
+└── README.md                     # 项目文档
+```
+
+---
+
+## 🔄 核心交互流程
+
+```
+首页
+  ├── 点击"一键播放" → 故事播放页（自动播放附近故事）
+  ├── 点击"浏览故事" → 故事列表页
+  ├── 点击"查看全部"（附近/热门）→ 故事列表页
+  └── 点击故事卡片 → 故事播放页
+
+故事播放页
+  ├── 点击"更多旅伴" → 旅伴选择列表页
+  ├── 点击旅伴头像（快速切换）→ 切换当前旅伴
+  ├── 点击"收藏" → 收藏/取消收藏故事
+  └── 点击"返回" → 首页
+
+旅伴选择列表页
+  ├── 点击卡片 → 返回故事播放页（切换旅伴）
+  ├── 点击"听TA讲故事" → 返回故事播放页（切换旅伴）
+  └── 点击心形图标 → 收藏/取消收藏旅伴
+
+地图选址页
+  ├── 点击热门城市 → 切换城市
+  ├── 搜索城市 → 定位到目标城市
+  └── 点击故事点 → 进入故事播放页
+
+我的页面
+  ├── 点击"收藏故事" → 收藏页面（故事列表）
+  ├── 点击"我的旅伴" → 旅伴选择页
+  └── 点击"设置/帮助" → 对应功能页面
+```
+
+---
+
+## 🎨 设计风格
+
+| 设计要素 | 详情 |
+|---------|------|
+| 主色调 | 深邃藏青色 (#0A1628) |
+| 强调色 | 金色 (#D4AF37) / 琥珀色 (#FFB800) |
+| 背景色 | 卡片背景 (#152238) |
+| 文字色 | 浅蓝白 (#E8F4FD) |
+| 字体 | Noto Serif SC（标题）、Noto Sans SC（正文） |
+| 风格 | 沉浸式、文化感、高端大气 |
+| 圆角 | 大圆角设计（2xl - 3xl） |
+
+---
+
+## 🚀 开发运行
+
+### 环境要求
+
+- Node.js >= 20.x
+- npm >= 10.x
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 开发模式
+
+```bash
+# 前端 + 后端同时启动
+npm run dev
+
+# 仅前端开发
+npm run client:dev
+
+# 仅后端开发
+npm run server:dev
+```
+
+### 构建生产版本
+
+```bash
+npm run build
+```
+
+### 预览生产版本
+
+```bash
+npm run preview
+```
+
+### 类型检查
+
+```bash
+npm run check
+```
+
+### 代码 lint
+
+```bash
+npm run lint
+```
+
+---
+
+## ☁️ 部署信息
+
+### Cloudflare Pages 部署
+
+项目已配置 Cloudflare Pages 自动部署：
+
+| 配置项 | 说明 |
+|-------|------|
+| 构建命令 | `npm run build` |
+| 构建输出目录 | `dist` |
+| API 处理 | Cloudflare Pages Functions |
+| 路由配置 | `public/_routes.json` 排除 `/api/*` |
+
+### 部署配置文件
+
+- `wrangler.toml` - Cloudflare Wrangler 配置
+- `public/_routes.json` - Cloudflare 路由规则
+- `public/_headers` - HTTP 安全头
+- `functions/api/[[path]].js` - API 入口函数
+
+### API 端点
+
+| 端点 | 方法 | 说明 |
+|-----|------|-----|
+| `/api/stories` | GET | 获取所有故事 |
+| `/api/stories/:id` | GET | 获取单个故事 |
+| `/api/stories/nearby` | GET | 获取附近故事 |
+| `/api/companions` | GET | 获取所有旅伴 |
+| `/api/companions/:id` | GET | 获取单个旅伴 |
+| `/api/tts` | POST | 语音合成 |
+
+---
+
+## 🎙️ 音频生成说明
+
+### 核心理念
+
+> **最重要的不是"换 voice_id"，而是"让每个角色真的说自己的话"。**
+>
+> 声音只是表层，真正的差异化来自脚本、视角和人格。
+
+同一地点可以有多个版本，但每个版本要先生成**各自独立的故事脚本**，再分别配不同的 voice_id 和语气参数，最后各自生成独立 mp3。
+
+**"同一主题" ≠ "同一文案"，而是"同一地点、不同视角、不同叙事内容"。**
+
+---
+
+### 推荐实现方式
+
+#### 第一步：先分角色写脚本
+
+每个角色先产出自己的讲解稿，而不是共用一份稿子。同一个景点，不同角色讲的内容完全不同：
+
+| 角色 | 讲述角度 | 内容侧重 | 例子 |
+|-----|---------|---------|------|
+| 苏东坡 | 山水、人生、旷达 | 诗词、历史典故、人生感悟 | 讲西湖：引用"欲把西湖比西子"，聊自己在杭州修苏堤的经历 |
+| 林徽因 | 建筑、审美、时代风骨 | 建筑结构、美学价值、历史背景 | 讲太和殿：分析斗拱结构、建筑等级、古代匠人智慧 |
+| 温柔女士 | 细节、氛围、人的情感 | 情绪共鸣、细节描写、治愈感 | 讲拙政园：听雨打芭蕉的声音，感受江南园林的静谧 |
+| 毒舌老炮 | 避坑、现实、吐槽 | 冷知识、反套路、真相揭秘 | 讲兵马俑：告诉你彩色兵马俑掉色的真相，吐槽景区的坑 |
+
+**关键原则：**
+- 每个角色都有自己的观点，不只是声音不同
+- 同一地点可以有共同事实，但叙事角度必须不同
+- 先脚本，后声音；先内容差异，后音色差异
+
+#### 第二步：再绑定角色声音
+
+每份脚本绑定一个固定的 voice_id，并配套完整的语音参数：
+
+| 参数 | 说明 | 作用 |
+|-----|------|------|
+| `voice_id` | 声音唯一标识 | 确保同一个角色在不同地点里声音稳定一致 |
+| `speed` / `rate` | 语速 | 苏东坡慢而豪迈，林徽因稳而细腻，毒舌老炮快而犀利 |
+| `pitch` | 音高 | 温柔女士偏高，毒舌老炮偏低 |
+| `emotion` | 情绪参数 | 不同场景下的情绪基调（激昂、温柔、幽默、严肃） |
+| `pause` | 停顿参数 | 句间停顿、段间停顿，增强节奏感 |
+
+**好处：**
+- 角色声音稳定，用户建立情感连接
+- 便于后续批量生产和复用
+- 参数可微调，持续优化音色表现
+
+#### 第三步：每个版本独立生成 mp3
+
+对每个"角色脚本 + voice_id"组合单独跑一次 TTS，输出独立音频文件。
+
+**最终结果：**
+- 一个地点 → 多个 mp3 版本
+- 每个版本 = 独立脚本 + 独立声音 + 独立音频文件
+- 不是一个音频里只换声音不换内容
+
+---
+
+### 生成流程
+
+```
+┌─────────────────┐
+│   1. 生成脚本    │
+│  AI 根据"地点 +  │
+│  角色设定"生成   │
+│  独立脚本        │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   2. 审核脚本    │
+│  人工审核内容，   │
+│  确保质量和准确  │
+│  性              │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   3. 调用 TTS    │
+│  按角色配置参数， │
+│  调用语音合成API  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   4. 输出音频    │
+│  每个角色输出独  │
+│  立 mp3 文件     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   5. 上传存储    │
+│  mp3 上传对象存  │
+│  储，JSON 保存   │
+│  音频地址和版本  │
+│  信息            │
+└─────────────────┘
+```
+
+---
+
+### 三层数据结构
+
+为了支撑上述流程，数据结构拆分为三层：
+
+#### 第一层：地点层 (Place)
+
+景点的基础信息，所有角色共享。
+
+```typescript
+interface Place {
+  placeId: string;           // 地点唯一标识
+  placeName: string;         // 地点名称
+  geo: {                     // 地理位置
+    lat: number;             // 纬度
+    lng: number;             // 经度
+    address?: string;        // 详细地址
+  };
+  themeTags: string[];       // 主题标签（历史、建筑、文化等）
+  coverImage: string;        // 封面图片
+  description: string;       // 简介（通用描述）
+}
+```
+
+#### 第二层：角色层 (Character)
+
+旅伴的人格设定和声音配置，固定复用。
+
+```typescript
+interface Character {
+  characterId: string;       // 角色唯一标识
+  characterName: string;     // 角色名称
+  avatar: string;            // 头像
+  style: string;             // 风格标签
+  description: string;       // 角色描述
+  persona: string;           // 人格设定（详细的人物背景）
+  voiceId: string;           // TTS 声音ID（固定绑定）
+  toneProfile: {             // 语气配置
+    speed: number;           // 语速
+    pitch: number;           // 音高
+    volume: number;          // 音量
+    emotion: string;         // 基础情绪
+    pauseBetweenSentences: number;  // 句间停顿（毫秒）
+    pauseBetweenParagraphs: number; // 段间停顿（毫秒）
+  };
+}
+```
+
+#### 第三层：版本层 (Version)
+
+每个地点 × 每个角色的独立版本，内容和音频各自独立。
+
+```typescript
+interface StoryVersion {
+  versionId: string;         // 版本唯一标识
+  placeId: string;           // 关联地点ID
+  characterId: string;       // 关联角色ID
+  scriptText: string;        // 完整脚本内容（逐字稿）
+  audioUrl: string;          // 音频文件地址
+  duration: number;          // 音频时长（秒）
+  version: string;           // 版本号（如 v1.0.0）
+  styleNote: string;         // 本版本风格说明
+  tags: string[];            // 本版本特有标签
+  createdAt: string;         // 创建时间
+  updatedAt: string;         // 更新时间
+  status: 'draft' | 'review' | 'published'; // 状态
+}
+```
+
+---
+
+### 当前项目数据结构说明
+
+当前项目采用简化版数据结构，核心逻辑一致：
+
+| 当前结构 | 对应三层结构 | 说明 |
+|---------|-------------|------|
+| `Story` | Place + 基础信息 | 故事 = 地点信息 + 默认配置 |
+| `Companion` | Character | 旅伴 = 角色设定 + voiceType |
+| `NarratorVersion` | StoryVersion | 讲解版本 = 独立脚本 + 音频地址 |
+
+后续可平滑迁移到完整的三层结构。
+
+---
+
+### 关键原则总结
+
+1. **每个角色都有自己的观点**，不只是声音不同
+2. **同一地点可以有共同事实，但叙事角度必须不同**
+3. **先脚本，后声音；先内容差异，后音色差异**
+4. **一个版本对应一份独立音频**，不要运行时拼来拼去
+5. **角色声音固定绑定**，保证跨地点的一致性
+
+---
+
+## 📊 数据模型
+
+### 故事 (Story)
+
+```typescript
+interface Story {
+  id: string;                    // 故事ID
+  title: string;                 // 故事标题
+  description: string;           // 故事描述
+  coverImage: string;            // 封面图片
+  location: {                    // 位置信息
+    name: string;                // 位置名称
+    lat: number;                 // 纬度
+    lng: number;                 // 经度
+  };
+  distance?: number;             // 距离（米）
+  duration: number;              // 时长（秒）
+  tags: string[];                // 标签
+  defaultCompanionId: string;    // 默认旅伴ID
+  narrators: NarratorVersion[];  // 各旅伴讲解版本
+}
+```
+
+### 旅伴讲解版本 (NarratorVersion)
+
+```typescript
+interface NarratorVersion {
+  companionId: string;           // 旅伴ID
+  content: string;               // 讲解内容
+  styleNote: string;             // 风格说明
+  duration: number;              // 时长（秒）
+  audioUrl?: string;             // 音频URL
+}
+```
+
+### 旅伴 (Companion)
+
+```typescript
+interface Companion {
+  id: string;                    // 旅伴ID
+  name: string;                  // 旅伴名称
+  avatar: string;                // 头像图片
+  style: string;                 // 风格标签
+  description: string;           // 描述
+}
+```
+
+---
+
+## 🔧 已解决问题
+
+| 问题 | 原因 | 解决方案 |
+|-----|------|---------|
+| 地图瓦片加载失败 | OpenStreetMap 瓦片加载被拦截 | 切换到 CartoCDN / Yandex 地图服务 |
+| 故事无法播放 | Web Speech API 兼容性问题 | 使用 HTML5 Audio 播放 TTS 音频文件 |
+| 进度显示错误 | 进度单位不一致（百分比 vs 秒） | 统一进度管理为百分比 |
+| Cloudflare 部署后无热门故事 | API 请求被当作静态资源 | 修改 `_routes.json` 排除 `/api/*`，使用 Pages Functions |
+| 分类过滤错误 | Story 类型缺少 `category` 字段 | 使用 `tags` 字段进行过滤 |
+
+---
+
+## 📝 版本记录
+
+| 版本 | 日期 | 主要更新 |
+|-----|------|---------|
+| v1.0.0 | 初始版本 | 基础功能：首页、故事播放、旅伴选择 |
+| v1.1.0 | - | 新增：故事列表页、地图选址页 |
+| v1.2.0 | - | 优化：底部导航改为首页/我的、旅伴卡片优化 |
+| v1.3.0 | - | 部署：Cloudflare Pages 部署配置完成 |
+| v1.4.0 | - | 修复：API 路由问题、播放器重构、文档完善 |
+
+---
+
+## 📄 许可证
+
+MIT License

@@ -1,16 +1,15 @@
-import { Heart, Navigation, Users, Settings, HelpCircle, ChevronRight, MapPin } from 'lucide-react';
+import { Heart, Users, Settings, HelpCircle, ChevronRight, MapPin } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useFavoritesStore } from '../store/favorites';
 import { useNavigate } from 'react-router-dom';
 
 export const Profile = () => {
-  const { stories, companions, routes } = useFavoritesStore();
+  const { stories, companions } = useFavoritesStore();
   const navigate = useNavigate();
 
   const menuItems = [
     { icon: Users, label: '我的旅伴', path: '/companions', badge: companions.length },
     { icon: Heart, label: '收藏故事', path: '/favorites', badge: stories.length },
-    { icon: Navigation, label: '我的路线', path: '/routes', badge: routes.length },
     { icon: Settings, label: '设置', path: '/settings' },
     { icon: HelpCircle, label: '帮助与反馈', path: '/help' },
   ];
@@ -42,7 +41,7 @@ export const Profile = () => {
             <MapPin className="w-5 h-5 text-gold" />
             我的收藏
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <button 
               onClick={() => navigate('/favorites')}
               className="bg-card-bg rounded-2xl p-4 border border-card-border hover:border-gold/50 transition-colors text-center"
@@ -58,14 +57,6 @@ export const Profile = () => {
               <Users className="w-8 h-8 mx-auto mb-2 text-gold" />
               <p className="font-semibold text-light-blue text-lg">{companions.length}</p>
               <p className="text-xs text-gray-500 mt-1">收藏旅伴</p>
-            </button>
-            <button 
-              onClick={() => navigate('/routes')}
-              className="bg-card-bg rounded-2xl p-4 border border-card-border hover:border-gold/50 transition-colors text-center"
-            >
-              <Navigation className="w-8 h-8 mx-auto mb-2 text-amber" />
-              <p className="font-semibold text-light-blue text-lg">{routes.length}</p>
-              <p className="text-xs text-gray-500 mt-1">收藏路线</p>
             </button>
           </div>
         </section>

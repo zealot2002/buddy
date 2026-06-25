@@ -1,9 +1,14 @@
 export interface NarratorVersion {
+  versionId?: string;
   companionId: string;
   duration: number;
   content: string;
   styleNote: string;
   audioUrl?: string;
+  version?: string;
+  status?: 'draft' | 'review' | 'published';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Story {

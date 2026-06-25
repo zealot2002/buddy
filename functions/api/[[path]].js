@@ -108,27 +108,6 @@ const companions = [
   }
 ];
 
-const routes = [
-  {
-    id: 'west-lake-classic',
-    title: '西湖经典一日游',
-    description: '断桥 → 雷峰塔 → 苏堤 → 花港观鱼',
-    coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=west%20lake%20hangzhou%20panoramic%20view%20sunset%20chinese%20landscape&image_size=square',
-    duration: 180,
-    storyCount: 4,
-    storyIds: ['west-lake-bridge']
-  },
-  {
-    id: 'beijing-imperial',
-    title: '北京皇家深度游',
-    description: '故宫 → 景山 → 北海 → 恭王府',
-    coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=beijing%20forbidden%20city%20panoramic%20view%20sunset%20imperial%20architecture&image_size=square',
-    duration: 300,
-    storyCount: 6,
-    storyIds: ['forbidden-city']
-  }
-];
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -190,24 +169,6 @@ export async function onRequest(context) {
         return Response.json(companionWithStories, { headers: corsHeaders });
       }
       return Response.json({ error: 'Companion not found' }, { status: 404, headers: corsHeaders });
-    }
-  }
-
-  if (path.startsWith('/api/routes')) {
-    if (method === 'GET') {
-      if (path === '/api/routes') {
-        return Response.json(routes, { headers: corsHeaders });
-      }
-      const id = path.replace('/api/routes/', '');
-      const route = routes.find(r => r.id === id);
-      if (route) {
-        const routeWithStories = {
-          ...route,
-          stories: route.storyIds.map(sid => stories.find(s => s.id === sid)).filter(Boolean)
-        };
-        return Response.json(routeWithStories, { headers: corsHeaders });
-      }
-      return Response.json({ error: 'Route not found' }, { status: 404, headers: corsHeaders });
     }
   }
 

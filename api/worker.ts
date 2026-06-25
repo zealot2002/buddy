@@ -1,6 +1,5 @@
 import { stories } from './data/stories.js';
 import { companions } from './data/companions.js';
-import { routes } from './data/routes.js';
 
 export interface Env {
   // 可以在这里添加绑定的变量和 KV 命名空间
@@ -75,25 +74,6 @@ export default {
           return Response.json(companionWithStories, { headers: corsHeaders });
         }
         return Response.json({ error: 'Companion not found' }, { status: 404, headers: corsHeaders });
-      }
-    }
-
-    if (path.startsWith('/api/routes')) {
-      if (method === 'GET') {
-        if (path === '/api/routes') {
-          return Response.json(routes, { headers: corsHeaders });
-        }
-        const id = path.replace('/api/routes/', '');
-        const route = routes.find(r => r.id === id);
-        if (route) {
-          // Add stories for route
-          const routeWithStories = {
-            ...route,
-            stories: route.storyIds.map(sid => stories.find(s => s.id === sid)).filter(Boolean)
-          };
-          return Response.json(routeWithStories, { headers: corsHeaders });
-        }
-        return Response.json({ error: 'Route not found' }, { status: 404, headers: corsHeaders });
       }
     }
 

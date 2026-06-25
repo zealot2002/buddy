@@ -15,7 +15,6 @@ import { createProxyMiddleware } from 'http-proxy-middleware'
 import authRoutes from './routes/auth.js'
 import storiesRoutes from './routes/stories.js'
 import companionsRoutes from './routes/companions.js'
-import routesRoutes from './routes/routes.js'
 import ttsRoutes from './routes/tts.js'
 
 // for esm mode
@@ -37,7 +36,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use('/api/auth', authRoutes)
 app.use('/api/stories', storiesRoutes)
 app.use('/api/companions', companionsRoutes)
-app.use('/api/routes', routesRoutes)
 app.use('/api/tts', ttsRoutes)
 
 app.use('/api/map-tiles', createProxyMiddleware({

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Story } from '../../api/data/stories.js';
 import type { Companion } from '../../api/data/companions.js';
-import type { Route } from '../../api/data/routes.js';
 
 const API_BASE = '/api';
 
@@ -108,46 +107,4 @@ export const useCompanion = (id: string) => {
   }, [id]);
 
   return { companion, loading, error };
-};
-
-export const useRoutes = () => {
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/routes`)
-      .then((res) => res.json())
-      .then((data) => {
-        setRoutes(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
-
-  return { routes, loading, error };
-};
-
-export const useRoute = (id: string) => {
-  const [route, setRoute] = useState<(Route & { stories: Story[] }) | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/routes/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setRoute(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [id]);
-
-  return { route, loading, error };
 };
