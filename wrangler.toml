@@ -7,9 +7,6 @@ publish_dir = "dist"
 [env.production]
 NODE_ENV = "production"
 
-[pages]
-entry = "api/worker.ts"
-
 [[headers]]
 source = "/*"
 headers = [
@@ -20,8 +17,3 @@ headers = [
   { key = "X-XSS-Protection", value = "1; mode=block" },
   { key = "X-Content-Type-Options", value = "nosniff" }
 ]
-
-[[redirects]]
-source = "/api/*"
-destination = "/api/:splat"
-status = 200
