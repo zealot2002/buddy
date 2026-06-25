@@ -1,18 +1,12 @@
-/** 稳定的封面与头像资源（原 trae-api 图片服务已不可用） */
+/** 稳定的封面与头像资源 */
 
 export const STORY_COVER_IMAGES: Record<string, string> = {
-  'west-lake-bridge':
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Hangzhou_Su_Causeway.JPG/960px-Hangzhou_Su_Causeway.JPG',
-  'forbidden-city-hall':
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/The_Forbidden_City_-_View_from_Jingshan_Hill.jpg/960px-The_Forbidden_City_-_View_from_Jingshan_Hill.jpg',
-  'suzhou-garden':
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Humble_Administrator%27s_Garden.jpg/960px-Humble_Administrator%27s_Garden.jpg',
-  'terracotta-army':
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Terracotta_Army_at_the_Museum_of_Qin_Terra-cotta_Warriors_and_Horses.jpg/960px-Terracotta_Army_at_the_Museum_of_Qin_Terra-cotta_Warriors_and_Horses.jpg',
-  'summer-palace':
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Summer_palace_beijing.jpg/960px-Summer_palace_beijing.jpg',
-  'yueyang-tower':
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Yueyang_Tower.jpg/960px-Yueyang_Tower.jpg',
+  'west-lake-bridge': '/images/west-lake-bridge.jpg',
+  'forbidden-city-hall': '/images/forbidden-city-hall.jpg',
+  'suzhou-garden': '/images/suzhou-garden.jpg',
+  'terracotta-army': '/images/terracotta-army.jpg',
+  'summer-palace': '/images/summer-palace.jpg',
+  'yueyang-tower': '/images/yueyang-tower.jpg',
 };
 
 export const COMPANION_AVATARS: Record<string, string> = {
