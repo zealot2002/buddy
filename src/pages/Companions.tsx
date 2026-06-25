@@ -1,17 +1,21 @@
-import { Heart, Play, MessageCircle } from 'lucide-react';
+import { Heart, Play } from 'lucide-react';
 import { Header } from '../components/Header';
 import { useCompanions } from '../hooks/useApi';
 import { useFavoritesStore } from '../store/favorites';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Companion } from '../../api/data/companions.js';
 
 export const Companions = () => {
   const { companions, loading } = useCompanions();
   const { isCompanionFavorite, addCompanion, removeCompanion } = useFavoritesStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const storyId = searchParams.get('storyId');
 
   const handleSelect = (companion: Companion) => {
-    navigate(`/story/${companion.id}`);
+    if (storyId) {
+      navigate(`/story/${storyId}?companionId=${companion.id}`);
+    }
   };
 
   return (
@@ -38,7 +42,7 @@ export const Companions = () => {
               return (
                 <div 
                   key={companion.id}
-                  className="companion-card group"
+                  className="companion-card group cursor-pointer"
                   onClick={() => handleSelect(companion)}
                 >
                   <div className="relative mb-3">
@@ -70,12 +74,13 @@ export const Companions = () => {
                   </span>
                   <p className="text-xs text-gray-400 mb-3 line-clamp-2">{companion.description}</p>
                   
-                  <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                    <MessageCircle className="w-3 h-3" />
-                    <span>{companion.storiesCount} 个故事</span>
-                  </div>
-                  
-                  <button className="mt-3 w-full py-2 rounded-full bg-card-border text-gold text-sm font-medium hover:bg-gold hover:text-deep-navy transition-colors flex items-center justify-center gap-2">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(companion);
+                    }}
+                    className="w-full py-2 rounded-full bg-card-border text-gold text-sm font-medium hover:bg-gold hover:text-deep-navy transition-colors flex items-center justify-center gap-2"
+                  >
                     <Play className="w-4 h-4" />
                     听TA讲故事
                   </button>

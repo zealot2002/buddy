@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, Heart, Share2, Volume2, VolumeX,
   SkipBack, SkipForward, MapPin, Clock, ChevronDown, ChevronUp,
@@ -13,6 +13,8 @@ import { StoryCard } from '../components/StoryCard';
 
 export const StoryPlayer = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const companionIdFromUrl = searchParams.get('companionId');
   const { story, loading } = useStory(id || '');
   const { companions } = useCompanions();
   const { 
@@ -37,9 +39,15 @@ export const StoryPlayer = () => {
 
   useEffect(() => {
     if (story && !currentStory) {
-      play(story);
+      play(story, companionIdFromUrl || undefined);
     }
-  }, [story, currentStory, play]);
+  }, [story, currentStory, play, companionIdFromUrl]);
+
+  useEffect(() => {
+    if (story && currentStory && companionIdFromUrl && currentCompanionId !== companionIdFromUrl) {
+      switchCompanion(companionIdFromUrl);
+    }
+  }, [story, currentStory, companionIdFromUrl, currentCompanionId, switchCompanion]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -196,7 +204,7 @@ export const StoryPlayer = () => {
               <span className="font-serif font-semibold text-light-blue">选择旅伴</span>
             </div>
             <button 
-              onClick={() => navigate('/companions')}
+              onClick={() => navigate(`/companions?storyId=${story.id}`)}
               className="text-sm text-gold hover:text-amber transition-colors flex items-center gap-1"
             >
               更多旅伴
