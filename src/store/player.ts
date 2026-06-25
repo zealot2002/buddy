@@ -1,9 +1,15 @@
 import { create } from 'zustand';
 import type { Story, NarratorVersion } from '../../api/data/stories.js';
+import { normalizeCompanionId } from '../../api/data/narrations.js';
+import {
+  findNarratorForCompanion,
+  resolveNarratorScript,
+  type ResolvedNarrator,
+} from '../../api/data/narration-utils.js';
 
 interface PlayerState {
   currentStory: Story | null;
-  currentNarrator: NarratorVersion | null;
+  currentNarrator: ResolvedNarrator | null;
   currentCompanionId: string | null;
   isPlaying: boolean;
   progress: number;
@@ -21,7 +27,7 @@ interface PlayerState {
 let audioElement: HTMLAudioElement | null = null;
 let fallbackTimer: ReturnType<typeof setInterval> | null = null;
 
-const getFallbackDuration = (narrator: NarratorVersion | null | undefined, story: Story) =>
+const getFallbackDuration = (narrator: ResolvedNarrator | null | undefined, story: Story) =>
   narrator?.duration || story.duration;
 
 const clearFallbackTimer = () => {
@@ -96,10 +102,17 @@ const startAudio = (
     audioElement = null;
   }
 
-  const narrator = story.narrators.find((n) => n.companionId === companionId);
+  const normalizedId = normalizeCompanionId(companionId);
+  const rawNarrator = findNarratorForCompanion(story.narrators, normalizedId);
+  if (!rawNarrator) {
+    console.error('joyjoy Narrator not found for companion:', companionId);
+    return;
+  }
+
+  const narrator = resolveNarratorScript(rawNarrator);
   const fallbackDuration = getFallbackDuration(narrator, story);
-  const audioUrl = narrator?.audioUrl
-    || `/api/tts?text=${encodeURIComponent(narrator?.content || story.description)}&lang=zh-CN`;
+  const audioUrl = narrator.audioUrl
+    || `/api/tts?text=${encodeURIComponent(narrator.content)}&lang=zh-CN`;
 
   audioElement = new Audio(audioUrl);
   audioElement.volume = get().volume;
@@ -108,8 +121,8 @@ const startAudio = (
 
   set({
     currentStory: story,
-    currentNarrator: narrator || null,
-    currentCompanionId: companionId,
+    currentNarrator: narrator,
+    currentCompanionId: normalizedId,
     duration: fallbackDuration,
     isPlaying: true,
     progress: 0,

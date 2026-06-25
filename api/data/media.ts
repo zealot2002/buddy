@@ -20,14 +20,26 @@ export const COMPANION_AVATARS: Record<string, string> = {
     'https://api.dicebear.com/7.x/notionists/svg?seed=sharp-elder&backgroundColor=111d2f',
 };
 
-export const DEFAULT_STORY_COVER =
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Changjiang.jpg/960px-Changjiang.jpg';
+export const DEFAULT_STORY_COVER = '/images/west-lake-bridge.jpg';
 
 export const DEFAULT_AVATAR =
   'https://api.dicebear.com/7.x/notionists/svg?seed=companion&backgroundColor=152238';
 
+export const STORY_ID_ALIASES: Record<string, string> = {
+  'forbidden-city': 'forbidden-city-hall',
+  'terra-cotta': 'terracotta-army',
+  'su-garden': 'suzhou-garden',
+};
+
 export function getStoryCoverImage(storyId: string, fallback?: string): string {
-  return STORY_COVER_IMAGES[storyId] || fallback || DEFAULT_STORY_COVER;
+  const normalizedId = STORY_ID_ALIASES[storyId] || storyId;
+  if (STORY_COVER_IMAGES[normalizedId]) {
+    return STORY_COVER_IMAGES[normalizedId];
+  }
+  if (fallback && !fallback.includes('trae-api')) {
+    return fallback;
+  }
+  return DEFAULT_STORY_COVER;
 }
 
 export function getCompanionAvatar(companionId: string, fallback?: string): string {

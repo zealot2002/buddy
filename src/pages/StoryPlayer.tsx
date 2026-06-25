@@ -12,6 +12,8 @@ import { usePlayerStore } from '../store/player';
 import { useFavoritesStore } from '../store/favorites';
 import { StoryCard } from '../components/StoryCard';
 import { getStoryCoverImage, getCompanionAvatar } from '../../api/data/media.js';
+import { uniqueNarratorsByCompanion } from '../../api/data/narration-utils.js';
+import { normalizeCompanionId } from '../../api/data/narrations.js';
 
 export const StoryPlayer = () => {
   const { id } = useParams<{ id: string }>();
@@ -102,7 +104,7 @@ export const StoryPlayer = () => {
   };
 
   const handleSwitchCompanion = (companionId: string) => {
-    switchCompanion(companionId);
+    switchCompanion(normalizeCompanionId(companionId));
   };
 
   if (loading || !story) {
@@ -116,6 +118,7 @@ export const StoryPlayer = () => {
     );
   }
 
+  const companionChoices = uniqueNarratorsByCompanion(story.narrators);
   const isFavorite = isStoryFavorite(story.id);
   const displayDuration = duration || currentNarrator?.duration || story.duration;
   const progressPercent = Math.max(0, Math.min(100, progress));
@@ -248,8 +251,10 @@ export const StoryPlayer = () => {
           </div>
           <div className="p-3 sm:p-4">
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {story.narrators.map((narrator) => {
-                const companion = companions.find((c) => c.id === narrator.companionId);
+              {companionChoices.map((narrator) => {
+                const companion = companions.find(
+                  (c) => normalizeCompanionId(c.id) === narrator.companionId,
+                );
                 const isActive = currentCompanionId === narrator.companionId;
                 
                 return (

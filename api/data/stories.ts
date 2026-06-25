@@ -1,4 +1,12 @@
 import { STORY_COVER_IMAGES } from './media.js';
+import { forbiddenCityNarrators, summerPalaceNarrators } from './story-narrators.js';
+
+export interface NarratorVariant {
+  versionId: string;
+  content: string;
+  styleNote?: string;
+  duration?: number;
+}
 
 export interface NarratorVersion {
   versionId?: string;
@@ -6,6 +14,7 @@ export interface NarratorVersion {
   duration: number;
   content: string;
   styleNote: string;
+  variants?: NarratorVariant[];
   audioUrl?: string;
   version?: string;
   status?: 'draft' | 'review' | 'published';
@@ -74,44 +83,19 @@ export const stories: Story[] = [
   },
   {
     id: 'forbidden-city-hall',
-    title: '太和殿的权力密码',
+    title: '故宫：紫禁城的千年回响',
     location: {
       name: '北京故宫',
       lat: 39.9163,
       lng: 116.3972,
     },
     distance: 850,
-    duration: 240,
-    description: '明清两代皇帝登基大典的场所，见证了无数历史风云变幻。',
+    duration: 180,
+    description: '走进紫禁城，在朱墙黄瓦间聆听六百年的人间冷暖与皇家往事。',
     coverImage: STORY_COVER_IMAGES['forbidden-city-hall'],
     defaultCompanionId: 'su-dongpo',
     tags: ['历史', '宫廷', '建筑'],
-    narrators: [
-      {
-        companionId: 'su-dongpo',
-        duration: 240,
-        content: '各位看官，眼前这太和殿，可是真正的权力中心！想当年康熙爷八岁登基，十四岁亲政，就在这大殿之上，谈笑间擒鳌拜、平三藩。这金砖铺地，每一块都藏着故事...',
-        styleNote: '豪放大气，帝王视角',
-      },
-      {
-        companionId: 'lin-huiyin',
-        duration: 260,
-        content: '从建筑的角度来看，太和殿是中国古代宫殿建筑的巅峰之作。你看这斗拱结构，层层递进，既美观又实用。重檐庑殿顶，是建筑等级中最高的形制...',
-        styleNote: '专业细致，建筑美学视角',
-      },
-      {
-        companionId: 'gentle-lady',
-        duration: 230,
-        content: '站在太和殿前，你是否也感受到了一种庄严和肃穆？六百年来，这里见证了多少王朝更迭、人事兴衰。历史的长河中，我们每个人都是过客...',
-        styleNote: '温暖共情，人文关怀',
-      },
-      {
-        companionId: 'sharp-elder',
-        duration: 220,
-        content: '别光看这殿气派，告诉您几个冷知识——太和殿其实很少用，一年也就用那么几次：登基、大婚、册立皇后、命将出征。平时上朝不在这，在乾清门...',
-        styleNote: '犀利揭秘，反套路',
-      },
-    ],
+    narrators: forbiddenCityNarrators,
   },
   {
     id: 'suzhou-garden',
@@ -197,44 +181,19 @@ export const stories: Story[] = [
   },
   {
     id: 'summer-palace',
-    title: '颐和园的皇家往事',
+    title: '颐和园：皇家园林的诗意',
     location: {
       name: '北京颐和园',
       lat: 39.9999,
       lng: 116.2755,
     },
     distance: 1500,
-    duration: 190,
-    description: '慈禧太后的后花园，见证了晚清的兴衰荣辱。',
+    duration: 180,
+    description: '昆明湖畔，长廊画舫，在湖光山色间感受皇家园林的借景之美与时代往事。',
     coverImage: STORY_COVER_IMAGES['summer-palace'],
     defaultCompanionId: 'gentle-lady',
     tags: ['皇家', '园林', '近代史'],
-    narrators: [
-      {
-        companionId: 'gentle-lady',
-        duration: 190,
-        content: '这里是颐和园，曾经是慈禧太后休养的地方。漫步湖边，仿佛还能感受到当年皇家的气派与繁华。佛香阁静静矗立，昆明湖水波荡漾，一切都在诉说着过往的故事...',
-        styleNote: '温柔细腻，历史感怀',
-      },
-      {
-        companionId: 'sharp-elder',
-        duration: 200,
-        content: '别被这美景骗了！颐和园的修建造价可是天价——当年挪用了海军军费来修园子，结果甲午海战输得一塌糊涂。慈禧太后这老太太，享福是真有一套...',
-        styleNote: '犀利批判，历史真相',
-      },
-      {
-        companionId: 'su-dongpo',
-        duration: 210,
-        content: '哈哈哈，这颐和园倒是有点意思。想当年我在杭州修苏堤，也是为了百姓生计。这皇家园林虽然气派，但终究少了几分烟火气。还是江南的园子更对我胃口...',
-        styleNote: '风趣对比，文人视角',
-      },
-      {
-        companionId: 'lin-huiyin',
-        duration: 200,
-        content: '从建筑角度来看，颐和园是中国古典园林的集大成之作。长廊的彩绘、佛香阁的结构、十七孔桥的造型——每一处都值得细细品味...',
-        styleNote: '专业建筑视角',
-      },
-    ],
+    narrators: summerPalaceNarrators,
   },
   {
     id: 'yueyang-tower',

@@ -1,0 +1,360 @@
+{
+  "stories": [
+    {
+      "id": "west-lake-bridge",
+      "title": "西湖断桥的传说",
+      "location": {
+        "name": "杭州西湖",
+        "lat": 30.2741,
+        "lng": 120.1551
+      },
+      "distance": 120,
+      "duration": 180,
+      "description": "断桥不断，肝肠寸断。白娘子与许仙的爱情故事，从这里开始流传千年。",
+      "coverImage": "/images/west-lake-bridge.jpg",
+      "defaultCompanionId": "lin-huiyin",
+      "tags": [
+        "爱情",
+        "传说",
+        "西湖"
+      ],
+      "narrators": [
+        {
+          "companionId": "lin-huiyin",
+          "duration": 180,
+          "content": "各位朋友，欢迎来到西湖断桥。站在这座桥上，我仿佛能感受到白娘子与许仙初次相遇时的心跳。你看这烟雨朦胧中的桥身，正如他们的爱情一样，若隐若现，如梦似幻...",
+          "styleNote": "温婉细腻，侧重情感与美学"
+        },
+        {
+          "companionId": "su-dongpo",
+          "duration": 200,
+          "content": "哈哈！各位看官，这断桥可有意思了。断桥不断，肝肠寸断——说的就是白娘子和许仙那档子事。想当年我苏东坡也在西湖边修过苏堤，见过的才子佳人可不少...",
+          "styleNote": "豪放风趣，穿插诗词典故"
+        },
+        {
+          "companionId": "gentle-lady",
+          "duration": 190,
+          "content": "亲爱的朋友，慢慢走，别着急。你看这断桥边的柳树，正随风轻轻摆动，像是在诉说着一个古老的故事。白娘子的传说之所以动人，是因为它告诉我们，真爱可以跨越一切...",
+          "styleNote": "温柔治愈，娓娓道来"
+        },
+        {
+          "companionId": "sharp-elder",
+          "duration": 170,
+          "content": "嘿，我说您可别光看景儿！这断桥有讲究——为什么叫断桥不叫断情桥？因为这桥啊，冬天雪化的时候，从宝石山上看，桥的一端像是断了一样。白娘子那是后人附会的神话...",
+          "styleNote": "犀利直白，讲干货冷知识"
+        }
+      ]
+    },
+    {
+      "id": "forbidden-city-hall",
+      "title": "故宫：紫禁城的千年回响",
+      "location": {
+        "name": "北京故宫",
+        "lat": 39.9163,
+        "lng": 116.3972
+      },
+      "distance": 850,
+      "duration": 180,
+      "description": "走进紫禁城，在朱墙黄瓦间聆听六百年的人间冷暖与皇家往事。",
+      "coverImage": "/images/forbidden-city-hall.jpg",
+      "defaultCompanionId": "su-dongpo",
+      "tags": [
+        "历史",
+        "宫廷",
+        "建筑"
+      ],
+      "narrators": [
+        {
+          "companionId": "su-dongpo",
+          "versionId": "su-dongpo-forbidden-v1",
+          "content": "哈哈，你一踏进这紫禁城，可曾觉得脚下砖缝里都藏着一声叹息？我当年在汴京做官，也走过这般朱墙黄瓦，只是没这气派。你看那太和殿前的铜鹤，昂首向天——像不像在等我这千年后的酒友？其实宫廷也好，江湖也罢，人间冷暖大抵相同。走，我带你寻一处檐角漏下的光，那才是皇城最奢侈的东西：片刻的自由。",
+          "styleNote": "豪放洒脱，带点顽皮，爱从生活细节悟出大道理",
+          "duration": 45
+        },
+        {
+          "companionId": "lin-huiyin",
+          "versionId": "lin-huiyin-forbidden-v1",
+          "content": "你感觉到了吗？午门中轴线上的光，是经由时间计算过的。这些金丝楠木的柱子，每一道纹理都比我们活得长久，它们沉默地撑起的不只是屋檐，还有六个世纪里无数人的仰望。我曾经测绘过许多古建，但站在这里，仍会心跳加速——你看那重重叠叠的斗拱，像不像树枝正在对天空说着最古老的悄悄话？别急着拍照，试着用手心贴一贴冰凉的汉白玉栏杆，那里头，藏着永乐年间某个工匠的体温。",
+          "styleNote": "温婉知性，建筑师的敏锐与诗意，将历史化为可触摸的温度",
+          "duration": 45
+        },
+        {
+          "companionId": "gentle-lady",
+          "versionId": "gentle-lady-forbidden-v1",
+          "content": "亲爱的，人好多对不对？没关系，来，我们先在角落站一会儿。你看见那道高高的红墙了吗？它看过多少离合悲欢，现在依然温柔地接着每日的落日。我想告诉你一个秘密：听说后宫的女孩子们，会偷偷用凤仙花染指甲，在长长的宫道里小声嬉闹。所以这庄严的宫殿里，从来都不缺悄悄绽放的生命力。深呼吸，我们要不要去看看储秀宫里那棵老柏树？它已经把几百年的风雨，都长成了安宁的绿荫。",
+          "styleNote": "声线柔和，像电台深夜主播，给你满满安全感和治愈感",
+          "duration": 45
+        },
+        {
+          "companionId": "sharp-elder",
+          "versionId": "sharp-elder-forbidden-v1",
+          "content": "嚯，瞧这乌泱泱的人，都是来看皇上家装修的。我跟您说，太和殿那龙椅瞅着金光闪闪，坐上去硬邦邦，冬天冰屁股，还得正襟危坐，有什么劲？您往那犄角旮旯看——对，就那儿，当年小太监们躲着嗑瓜子儿的地儿。这紫禁城啊，说白了就是一特高级的合院儿，主卧叫乾清宫，客厅叫太和殿，御花园就是后院菜地改的景观带。行了，别光顾着拿手机照金銮殿了，您低头瞅瞅这金砖，当年光打磨一块就得三年，比您那健身环励志多了。",
+          "styleNote": "北京腔，嘴贫心热，专揭历史老底儿，字字是实在的冷知识",
+          "duration": 45
+        }
+      ]
+    },
+    {
+      "id": "suzhou-garden",
+      "title": "拙政园的山水意境",
+      "location": {
+        "name": "苏州拙政园",
+        "lat": 31.299,
+        "lng": 120.6202
+      },
+      "distance": 2300,
+      "duration": 200,
+      "description": "江南园林艺术的巅峰之作，一步一景，处处皆画。",
+      "coverImage": "/images/suzhou-garden.jpg",
+      "defaultCompanionId": "lin-huiyin",
+      "tags": [
+        "园林",
+        "艺术",
+        "江南"
+      ],
+      "narrators": [
+        {
+          "companionId": "lin-huiyin",
+          "duration": 200,
+          "content": "亲爱的朋友，拙政园是我最爱的园林之一。你看这亭台楼阁，山水相映，处处透着江南文人的雅致情怀。借景、框景、对景——每一种造园手法，都是一首无声的诗...",
+          "styleNote": "专业细腻，建筑美学"
+        },
+        {
+          "companionId": "su-dongpo",
+          "duration": 220,
+          "content": "哈哈哈，这拙政园的名字取得有意思！\"拙政\"二字，出自潘岳的《闲居赋》，意思是说自己笨拙，只会从政。说白了就是当官当腻了，归隐田园...",
+          "styleNote": "风趣幽默，文人视角"
+        },
+        {
+          "companionId": "gentle-lady",
+          "duration": 210,
+          "content": "慢慢走，别着急。在拙政园里，时间是用来浪费的。你听这雨声打在芭蕉叶上，滴答滴答，像是大自然在为你演奏一曲轻音乐...",
+          "styleNote": "温柔治愈，沉浸式体验"
+        },
+        {
+          "companionId": "sharp-elder",
+          "duration": 190,
+          "content": "别以为这园子就是种花种草的地方！拙政园的格局大有讲究——远香堂、见山楼、小飞虹，每一处名字都有出处。文人造园，讲究的是\"虽由人作，宛自天开\"...",
+          "styleNote": "犀利直白，讲门道"
+        }
+      ]
+    },
+    {
+      "id": "terracotta-army",
+      "title": "兵马俑的千年秘密",
+      "location": {
+        "name": "西安兵马俑",
+        "lat": 34.3853,
+        "lng": 109.2731
+      },
+      "distance": 5400,
+      "duration": 260,
+      "description": "千古一帝秦始皇的地下军团，沉睡千年后重见天日。",
+      "coverImage": "/images/terracotta-army.jpg",
+      "defaultCompanionId": "sharp-elder",
+      "tags": [
+        "历史",
+        "考古",
+        "秦朝"
+      ],
+      "narrators": [
+        {
+          "companionId": "sharp-elder",
+          "duration": 260,
+          "content": "嘿，您可别小看这些泥人！告诉您几个真东西——兵马俑刚挖出来的时候是彩色的，一见空气就掉色了。还有，每个兵的脸都不一样，据说都是照着真人捏的...",
+          "styleNote": "犀利揭秘，考古视角"
+        },
+        {
+          "companionId": "su-dongpo",
+          "duration": 280,
+          "content": "秦王扫六合，虎视何雄哉！想当年秦始皇嬴政，十三岁登基，三十九岁统一六国，这份功业，前无古人后无来者。这兵马俑，就是他千古霸业的见证...",
+          "styleNote": "豪放大气，帝王功业视角"
+        },
+        {
+          "companionId": "lin-huiyin",
+          "duration": 250,
+          "content": "从艺术史的角度来看，兵马俑是中国古代雕塑艺术的杰作。你看这每一张面孔，都有不同的表情和特征——将军的威严、士兵的坚毅、弓箭手的专注...",
+          "styleNote": "艺术审美，细致观察"
+        },
+        {
+          "companionId": "gentle-lady",
+          "duration": 240,
+          "content": "看着这些沉默了两千多年的士兵，我的心里有种说不出的感动。他们曾经也是有血有肉的年轻人，为了一个帝国的梦想，永远地站在了这里...",
+          "styleNote": "温暖共情，人文视角"
+        }
+      ]
+    },
+    {
+      "id": "summer-palace",
+      "title": "颐和园：皇家园林的诗意",
+      "location": {
+        "name": "北京颐和园",
+        "lat": 39.9999,
+        "lng": 116.2755
+      },
+      "distance": 1500,
+      "duration": 180,
+      "description": "昆明湖畔，长廊画舫，在湖光山色间感受皇家园林的借景之美与时代往事。",
+      "coverImage": "/images/summer-palace.jpg",
+      "defaultCompanionId": "gentle-lady",
+      "tags": [
+        "皇家",
+        "园林",
+        "近代史"
+      ],
+      "narrators": [
+        {
+          "companionId": "su-dongpo",
+          "versionId": "su-dongpo-summer-v1",
+          "content": "妙哉！这昆明湖的水，竟把西山借来做了屏风。你看那十七孔桥，分明是横卧波心的半阕词，只待夕阳来点睛。我若在此泛舟，定要捞起湖中倒映的云，佐一壶龙井下酒。杨万里说\"接天莲叶无穷碧\"，此处虽无荷，却有柳浪替它翻书页。莫赶路，且随我听听——风过长廊时，是不是在吟我那句\"惟江上之清风，与山间之明月\"？",
+          "styleNote": "寄情山水，随时会诗兴大发，把皇家园林看成天然画本",
+          "duration": 45
+        },
+        {
+          "companionId": "lin-huiyin",
+          "versionId": "lin-huiyin-summer-v1",
+          "content": "昆明湖的长堤，是特意为散步的思绪留白的。你看西边那抹淡淡的远山，正是造园者\"借景\"的妙笔——不设围墙，把天地都邀进自家院子。我顶爱这长廊梁枋上的苏式彩画，每一幅都是一个被定格的故事，风吹日晒，色彩褪得刚刚好，像旧信笺上的墨痕。我们走慢些，好吗？当斜阳把佛香阁的影子投到湖面上时，你会明白，这园子最美的建筑，其实是光。",
+          "styleNote": "轻声细语，把园林读成立体的诗，关注光影与细节的温柔",
+          "duration": 45
+        },
+        {
+          "companionId": "gentle-lady",
+          "versionId": "gentle-lady-summer-v1",
+          "content": "累了吧？来，靠湖边的长椅坐一坐。你听，水波轻轻拍着石岸的声音，是不是像在哼一首摇篮曲？慈禧当年乘船经过时，水面也是这般漾开的，也许她也会在某个午后，放下所有沉重的东西，只看蜻蜓点水。现在，我把这片湖光送给你——抬头是佛香阁金灿灿的塔尖，低头有柳枝正拂过你的肩膀。我们不赶景点，就贪这一刻的闲，好不好？",
+          "styleNote": "缓缓引导，注重感官抚慰，把宏大景观变成私人花园",
+          "duration": 45
+        },
+        {
+          "companionId": "sharp-elder",
+          "versionId": "sharp-elder-summer-v1",
+          "content": "啧，瞧瞧，这就是拿北洋水师的军费堆出来的大别墅。那石舫，看着挺洋气吧？不会动！纯粹一装修摆件儿，跟您车里放那摇头公仔一个意思。慈禧老太太当年就爱在这听鹂馆听戏，唱的是《长生殿》，花的是买炮弹的银子，您说魔幻不魔幻？不过话说回来，这长廊上的画儿是真讲究，西游记、水浒传，全套连环画给您糊顶棚上。得，咱也别光骂了，挑个人少的角度瞅一眼十七孔桥的金光穿洞——大自然可不看人下菜碟，美起来不要钱。",
+          "styleNote": "斜眼看奢华，一边吐槽一边把典故抖得明明白白",
+          "duration": 45
+        }
+      ]
+    },
+    {
+      "id": "yueyang-tower",
+      "title": "岳阳楼的千古绝唱",
+      "location": {
+        "name": "岳阳岳阳楼",
+        "lat": 29.3436,
+        "lng": 113.0853
+      },
+      "distance": 8900,
+      "duration": 220,
+      "description": "范仲淹《岳阳楼记》的诞生地，\"先天下之忧而忧\"的情怀在此传颂。",
+      "coverImage": "/images/yueyang-tower.jpg",
+      "defaultCompanionId": "su-dongpo",
+      "tags": [
+        "诗词",
+        "建筑",
+        "文化"
+      ],
+      "narrators": [
+        {
+          "companionId": "su-dongpo",
+          "duration": 220,
+          "content": "噫！微斯人，吾谁与归？范仲淹的《岳阳楼记》，真是字字珠玑。先天下之忧而忧，后天下之乐而乐——这份胸襟，这份抱负，让我苏东坡也钦佩不已...",
+          "styleNote": "豪放激昂，文人情怀"
+        },
+        {
+          "companionId": "gentle-lady",
+          "duration": 230,
+          "content": "站在岳阳楼上，眺望洞庭湖，心中不由得涌起一种开阔的感觉。范仲淹说得真好——不以物喜，不以己悲。这种境界，值得我们每个人去追寻...",
+          "styleNote": "温暖治愈，人生感悟"
+        },
+        {
+          "companionId": "sharp-elder",
+          "duration": 210,
+          "content": "您可别以为范仲淹真的天天在岳阳楼上待着！告诉您，《岳阳楼记》是他看着一幅画写出来的，他本人根本没去过岳阳楼。这就是文人的厉害之处...",
+          "styleNote": "犀利揭秘，冷知识"
+        },
+        {
+          "companionId": "lin-huiyin",
+          "duration": 200,
+          "content": "岳阳楼的建筑结构非常有特色。三层飞檐，盔顶造型，是中国古建筑中独一无二的形制。从力学角度来看，这种结构既稳固又美观，堪称建筑史上的奇迹...",
+          "styleNote": "专业建筑视角"
+        }
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "su-dongpo",
+      "name": "苏东坡",
+      "avatar": "https://api.dicebear.com/7.x/notionists/svg?seed=su-dongpo&backgroundColor=d4af37",
+      "style": "豪放洒脱",
+      "description": "北宋文坛领袖，豪放派诗词大家。他会用风趣幽默的方式，带你领略历史的诗意与豪情。",
+      "persona": "苏轼，字子瞻，号东坡居士。北宋著名文学家、书法家、画家。性格旷达乐观，虽仕途坎坷但始终保持豁达心境。精通诗词、散文、书画，是中国文学史上的全才。讲述时喜欢引用诗词典故，语速偏慢，声音醇厚，带有文人的儒雅与豪迈。",
+      "voiceId": "zh-CN-male-01",
+      "voiceType": "醇厚男声",
+      "toneProfile": {
+        "speed": 0.9,
+        "pitch": 0.85,
+        "volume": 1,
+        "emotion": "cheerful",
+        "pauseBetweenSentences": 400,
+        "pauseBetweenParagraphs": 800
+      },
+      "storiesCount": 12
+    },
+    {
+      "id": "lin-huiyin",
+      "name": "林徽因",
+      "avatar": "https://api.dicebear.com/7.x/notionists/svg?seed=lin-huiyin&backgroundColor=f5a623",
+      "style": "知性优雅",
+      "description": "中国第一位女建筑师，兼具才情与美貌。她会用细腻的视角，为你讲述建筑与文学的交融之美。",
+      "persona": "林徽因，中国著名建筑学家、作家。中国第一位女建筑师，参与了国徽和人民英雄纪念碑的设计。才貌双全，兼具理性与感性。讲述时逻辑清晰，语调温婉，善于从建筑美学和历史背景切入，让人感受到建筑背后的人文温度。",
+      "voiceId": "zh-CN-female-01",
+      "voiceType": "温婉女声",
+      "toneProfile": {
+        "speed": 0.95,
+        "pitch": 1.05,
+        "volume": 0.9,
+        "emotion": "gentle",
+        "pauseBetweenSentences": 350,
+        "pauseBetweenParagraphs": 700
+      },
+      "storiesCount": 8
+    },
+    {
+      "id": "gentle-lady",
+      "name": "温柔女士",
+      "avatar": "https://api.dicebear.com/7.x/notionists/svg?seed=gentle-lady&backgroundColor=152238",
+      "style": "温暖治愈",
+      "description": "一位温暖而善解人意的旅伴，娓娓道来，让你在旅途中感受到家的温馨。",
+      "persona": "一位温柔细腻、善解人意的女性。说话轻声细语，善于观察细节，总能发现生活中的小美好。她的讲解像春风拂面，让人感到安心和治愈。擅长从情感和氛围入手，让听众沉浸在故事的情境中。语速平缓，声音温暖，带有安抚人心的力量。",
+      "voiceId": "zh-CN-female-02",
+      "voiceType": "温暖女声",
+      "toneProfile": {
+        "speed": 0.85,
+        "pitch": 1.1,
+        "volume": 0.85,
+        "emotion": "warm",
+        "pauseBetweenSentences": 500,
+        "pauseBetweenParagraphs": 900
+      },
+      "storiesCount": 15
+    },
+    {
+      "id": "sharp-elder",
+      "name": "毒舌老炮",
+      "avatar": "https://api.dicebear.com/7.x/notionists/svg?seed=sharp-elder&backgroundColor=111d2f",
+      "style": "犀利幽默",
+      "description": "一位见多识广的老炮儿，言辞犀利一针见血，用独特视角解读历史背后的故事。",
+      "persona": "一位见多识广、性格直爽的北京老炮儿。说话犀利风趣，喜欢吐槽和揭秘，不爱说场面话。肚子里装着各种冷知识和历史真相，总能从别人想不到的角度看问题。虽然嘴上不饶人，但说的都是干货，听着过瘾还长见识。语速偏快，声音略带沧桑，节奏感强。",
+      "voiceId": "zh-CN-male-02",
+      "voiceType": "沧桑男声",
+      "toneProfile": {
+        "speed": 1.1,
+        "pitch": 0.8,
+        "volume": 1.05,
+        "emotion": "humorous",
+        "pauseBetweenSentences": 300,
+        "pauseBetweenParagraphs": 600
+      },
+      "storiesCount": 10
+    }
+  ]
+}

@@ -3,6 +3,17 @@ import { stories, type Story } from '../data/stories.js';
 
 const router = express.Router();
 
+const STORY_ID_ALIASES: Record<string, string> = {
+  'forbidden-city': 'forbidden-city-hall',
+  'terra-cotta': 'terracotta-army',
+  'su-garden': 'suzhou-garden',
+};
+
+function findStory(id: string): Story | undefined {
+  const resolvedId = STORY_ID_ALIASES[id] || id;
+  return stories.find((story) => story.id === resolvedId || story.id === id);
+}
+
 router.get('/', (_req: Request, res: Response) => {
   res.json(stories);
 });
@@ -25,7 +36,7 @@ router.get('/nearby', (req: Request, res: Response) => {
 router.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const { companionId } = req.query;
-  const story = stories.find((s) => s.id === id);
+  const story = findStory(id);
   if (story) {
     if (companionId && typeof companionId === 'string') {
       const narrator = story.narrators.find((n) => n.companionId === companionId);
@@ -43,7 +54,7 @@ router.get('/:id', (req: Request, res: Response) => {
 
 router.get('/:id/narrators', (req: Request, res: Response) => {
   const { id } = req.params;
-  const story = stories.find((s) => s.id === id);
+  const story = findStory(id);
   if (story) {
     res.json(story.narrators);
   } else {
