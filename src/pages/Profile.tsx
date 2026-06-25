@@ -27,7 +27,7 @@ export const Profile = () => {
                 <Users className="w-10 h-10 text-gold" />
               </div>
               <div className="flex-1">
-                <h2 className="font-serif text-xl font-bold text-light-blue">故事旅伴</h2>
+                <h2 className="font-serif text-xl font-bold text-light-blue">AI旅伴</h2>
                 <p className="text-gray-400 text-sm mt-1">探索世界，聆听故事</p>
               </div>
               <button className="gold-outline-button text-sm px-4 py-2">
@@ -98,9 +98,9 @@ export const Profile = () => {
 
         <section className="mb-8">
           <div className="bg-gradient-to-r from-card-bg to-card-border rounded-2xl p-5 border border-card-border">
-            <h3 className="font-serif font-bold text-light-blue mb-2">关于故事旅伴</h3>
+            <h3 className="font-serif font-bold text-light-blue mb-2">关于AI旅伴</h3>
             <p className="text-sm text-gray-400">
-              故事旅伴是一款沉浸式音频导览应用，让你在旅途中一键召唤会讲故事、会共情、会带时代感的AI旅伴。
+              AI旅伴是一款沉浸式音频导览应用，让你在旅途中一键召唤会讲故事、会共情、会带时代感的AI旅伴。
             </p>
             <p className="text-xs text-gray-600 mt-3">版本 1.0.0</p>
           </div>
