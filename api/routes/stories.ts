@@ -24,9 +24,28 @@ router.get('/nearby', (req: Request, res: Response) => {
 
 router.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
+  const { companionId } = req.query;
   const story = stories.find((s) => s.id === id);
   if (story) {
-    res.json(story);
+    if (companionId && typeof companionId === 'string') {
+      const narrator = story.narrators.find((n) => n.companionId === companionId);
+      if (narrator) {
+        res.json({ ...story, currentNarrator: narrator });
+        return;
+      }
+    }
+    const defaultNarrator = story.narrators.find((n) => n.companionId === story.defaultCompanionId);
+    res.json({ ...story, currentNarrator: defaultNarrator });
+  } else {
+    res.status(404).json({ error: 'Story not found' });
+  }
+});
+
+router.get('/:id/narrators', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const story = stories.find((s) => s.id === id);
+  if (story) {
+    res.json(story.narrators);
   } else {
     res.status(404).json({ error: 'Story not found' });
   }

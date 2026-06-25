@@ -3,10 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, Heart, Share2, Volume2, VolumeX,
   SkipBack, SkipForward, MapPin, Clock, ChevronDown, ChevronUp,
-  User, ChevronRight
+  User, ChevronRight, Check
 } from 'lucide-react';
 import { Header } from '../components/Header';
-import { useStory, useCompanion } from '../hooks/useApi';
+import { useStory, useCompanions } from '../hooks/useApi';
 import { usePlayerStore } from '../store/player';
 import { useFavoritesStore } from '../store/favorites';
 import { StoryCard } from '../components/StoryCard';
@@ -14,8 +14,20 @@ import { StoryCard } from '../components/StoryCard';
 export const StoryPlayer = () => {
   const { id } = useParams<{ id: string }>();
   const { story, loading } = useStory(id || '');
-  const { companion } = useCompanion(story?.companionId || '');
-  const { currentStory, isPlaying, progress, play, pause, toggle, setProgress, stop } = usePlayerStore();
+  const { companions } = useCompanions();
+  const { 
+    currentStory, 
+    currentNarrator, 
+    currentCompanionId, 
+    isPlaying, 
+    progress, 
+    play, 
+    pause, 
+    toggle, 
+    setProgress, 
+    stop,
+    switchCompanion 
+  } = usePlayerStore();
   const { isStoryFavorite, addStory, removeStory } = useFavoritesStore();
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
@@ -32,24 +44,26 @@ export const StoryPlayer = () => {
   useEffect(() => {
     if (!isPlaying) return;
     
+    const duration = currentNarrator?.duration || currentStory?.duration || 0;
     const interval = setInterval(() => {
-      if (currentStory && progress < currentStory.duration) {
+      if (duration > 0 && progress < duration) {
         setProgress(progress + 1);
-      } else if (currentStory && progress >= currentStory.duration) {
+      } else if (duration > 0 && progress >= duration) {
         pause();
-        setProgress(currentStory.duration);
+        setProgress(duration);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentStory, progress, pause, setProgress]);
+  }, [isPlaying, currentStory, currentNarrator, progress, pause, setProgress]);
 
   const handleProgressClick = (e: React.MouseEvent) => {
-    if (!progressRef.current || !currentStory) return;
+    if (!progressRef.current) return;
+    const duration = currentNarrator?.duration || currentStory?.duration || 0;
     
     const rect = progressRef.current.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
-    setProgress(Math.floor(percent * currentStory.duration));
+    setProgress(Math.floor(percent * duration));
   };
 
   const formatTime = (seconds: number) => {
@@ -61,6 +75,10 @@ export const StoryPlayer = () => {
   const handleBack = () => {
     stop();
     navigate('/');
+  };
+
+  const handleSwitchCompanion = (companionId: string) => {
+    switchCompanion(companionId);
   };
 
   if (loading || !story) {
@@ -75,7 +93,9 @@ export const StoryPlayer = () => {
   }
 
   const isFavorite = isStoryFavorite(story.id);
-  const progressPercent = story.duration > 0 ? (progress / story.duration) * 100 : 0;
+  const displayDuration = currentNarrator?.duration || story.duration;
+  const progressPercent = displayDuration > 0 ? (progress / displayDuration) * 100 : 0;
+  const currentCompanion = companions.find((c) => c.id === currentCompanionId);
 
   return (
     <div className="min-h-screen bg-deep-navy">
@@ -98,19 +118,6 @@ export const StoryPlayer = () => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-deep-navy via-deep-navy/30 to-transparent" />
           <div className="absolute bottom-4 left-4 right-4">
-            <div className="flex items-center gap-3 mb-2">
-              {companion && (
-                <img 
-                  src={companion.avatar}
-                  alt={companion.name}
-                  className="w-10 h-10 rounded-full border-2 border-gold object-cover"
-                />
-              )}
-              <div>
-                <p className="text-gold text-sm">{companion?.name || '未知旅伴'}</p>
-                <p className="text-gray-400 text-xs">{story.location.name}</p>
-              </div>
-            </div>
             <h1 className="font-serif text-2xl font-bold text-light-blue">{story.title}</h1>
           </div>
         </div>
@@ -133,7 +140,7 @@ export const StoryPlayer = () => {
                 <div className="flex items-center gap-3 text-sm text-gray-400">
                   <span className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    {formatTime(progress)} / {formatTime(story.duration)}
+                    {formatTime(progress)} / {formatTime(displayDuration)}
                   </span>
                 </div>
               </div>
@@ -180,62 +187,74 @@ export const StoryPlayer = () => {
               style={{ left: `calc(${progressPercent}% - 8px)` }}
             />
           </div>
-
-          <div className="flex items-center justify-center gap-6 mb-4">
-            <button className="p-3 rounded-full bg-card-border hover:bg-card-border/80 transition-colors">
-              <SkipBack className="w-5 h-5 text-gray-400" />
-            </button>
-            <button className="p-3 rounded-full bg-card-border hover:bg-card-border/80 transition-colors">
-              <SkipForward className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
-
-          {!isMuted && (
-            <div className="flex items-center gap-3">
-              <Volume2 className="w-4 h-4 text-gray-400" />
-              <input 
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(e) => setVolume(Number(e.target.value))}
-                className="flex-1 h-1 bg-card-border rounded-full appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, #D4AF37 0%, #D4AF37 ${volume}%, #1E2A3D ${volume}%, #1E2A3D 100%)`
-                }}
-              />
-              <span className="text-xs text-gray-400 w-8">{volume}%</span>
-            </div>
-          )}
         </div>
 
-        <div 
-          className="bg-card-bg rounded-2xl p-5 border border-card-border mb-6 cursor-pointer hover:border-gold/50 transition-colors"
-          onClick={() => navigate('/companions')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center">
-                <User className="w-6 h-6 text-gold" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-400 mb-0.5">当前旅伴</p>
-                <div className="flex items-center gap-2">
-                  <span className="font-serif font-semibold text-light-blue">{companion?.name || '未知旅伴'}</span>
-                  <span className="px-2 py-0.5 text-xs bg-amber/20 text-amber rounded-full">讲解中</span>
-                </div>
-              </div>
-            </div>
+        <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-6">
+          <div className="px-6 py-4 border-b border-card-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">更换</span>
-              <ChevronRight className="w-5 h-5 text-gray-500" />
+              <User className="w-5 h-5 text-gold" />
+              <span className="font-serif font-semibold text-light-blue">选择旅伴</span>
+            </div>
+            <button 
+              onClick={() => navigate('/companions')}
+              className="text-sm text-gold hover:text-amber transition-colors flex items-center gap-1"
+            >
+              更多旅伴
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-2 gap-3">
+              {story.narrators.map((narrator) => {
+                const companion = companions.find((c) => c.id === narrator.companionId);
+                const isActive = currentCompanionId === narrator.companionId;
+                
+                return (
+                  <button
+                    key={narrator.companionId}
+                    onClick={() => handleSwitchCompanion(narrator.companionId)}
+                    className={`p-3 rounded-xl border transition-all duration-300 text-left ${
+                      isActive 
+                        ? 'border-gold bg-gold/10' 
+                        : 'border-card-border hover:border-gold/50 bg-card-bg/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <img 
+                          src={companion?.avatar}
+                          alt={companion?.name}
+                          className={`w-10 h-10 rounded-full object-cover ${
+                            isActive ? 'ring-2 ring-gold ring-offset-2 ring-offset-card-bg' : ''
+                          }`}
+                        />
+                        {isActive && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gold rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-deep-navy" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-light-blue text-sm">{companion?.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{narrator.styleNote}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatTime(narrator.duration)}
+                      </span>
+                      {isActive && (
+                        <span className="px-2 py-0.5 bg-amber/20 text-amber rounded-full">
+                          讲解中
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
-          {companion && (
-            <div className="mt-3 pt-3 border-t border-card-border">
-              <p className="text-sm text-gray-400 line-clamp-2">{companion.description}</p>
-            </div>
-          )}
         </div>
 
         <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-6">
@@ -252,7 +271,9 @@ export const StoryPlayer = () => {
           </button>
           {showContent && (
             <div className="px-6 pb-6">
-              <p className="text-gray-400 leading-relaxed">{story.content}</p>
+              <p className="text-gray-400 leading-relaxed">
+                {currentNarrator?.content || story.narrators[0]?.content}
+              </p>
             </div>
           )}
         </div>
@@ -260,12 +281,22 @@ export const StoryPlayer = () => {
         <section className="mb-6">
           <h3 className="font-serif font-bold text-light-blue mb-4 flex items-center gap-2">
             <MapPin className="w-5 h-5 text-gold" />
-            相关故事
+            附近更多故事
           </h3>
           <div className="flex gap-4 overflow-x-auto pb-4">
-            {companion?.stories?.map((relatedStory) => (
-              <StoryCard key={relatedStory.id} story={relatedStory} compact />
-            ))}
+            {story.id !== 'west-lake-bridge' && 
+              <StoryCard key="west-lake-bridge" story={{
+                id: 'west-lake-bridge',
+                title: '西湖断桥的传说',
+                location: { name: '杭州西湖', lat: 30.2741, lng: 120.1551 },
+                distance: 120,
+                duration: 180,
+                description: '断桥不断，肝肠寸断。白娘子与许仙的爱情故事...',
+                coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=west%20lake%20hangzhou%20broken%20bridge%20chinese%20traditional%20painting%20style%20beautiful%20scenery%20willow%20trees%20misty&image_size=landscape_16_9',
+                defaultCompanionId: 'lin-huiyin',
+                tags: ['爱情', '传说', '西湖'],
+                narrators: []
+              }} compact />}
           </div>
         </section>
 
@@ -279,7 +310,9 @@ export const StoryPlayer = () => {
               />
               <div className="flex-1 min-w-0">
                 <p className="font-serif font-semibold text-light-blue truncate">{story.title}</p>
-                <p className="text-sm text-gray-400">{formatTime(progress)} / {formatTime(story.duration)}</p>
+                <p className="text-sm text-gray-400">
+                  {currentCompanion?.name} · {formatTime(progress)} / {formatTime(displayDuration)}
+                </p>
               </div>
               <button 
                 onClick={toggle}

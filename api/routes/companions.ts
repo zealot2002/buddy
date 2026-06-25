@@ -12,7 +12,7 @@ router.get('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const companion = companions.find((c) => c.id === id);
   if (companion) {
-    const companionStories = stories.filter((s) => s.companionId === id);
+    const companionStories = stories.filter((s) => s.narrators.some((n) => n.companionId === id));
     res.json({ ...companion, stories: companionStories });
   } else {
     res.status(404).json({ error: 'Companion not found' });

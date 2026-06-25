@@ -1,4 +1,4 @@
-import { Play, Heart, Clock, MapPin } from 'lucide-react';
+import { Play, Heart, Clock, MapPin, Users } from 'lucide-react';
 import type { Story } from '../../api/data/stories.js';
 import { useFavoritesStore } from '../store/favorites';
 import { usePlayerStore } from '../store/player';
@@ -14,6 +14,7 @@ export const StoryCard = ({ story, compact = false }: StoryCardProps) => {
   const { play } = usePlayerStore();
   const navigate = useNavigate();
   const isFavorite = isStoryFavorite(story.id);
+  const defaultDuration = story.narrators[0]?.duration || story.duration;
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -75,11 +76,15 @@ export const StoryCard = ({ story, compact = false }: StoryCardProps) => {
           <div className="flex items-center gap-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {formatDuration(story.duration)}
+              {formatDuration(defaultDuration)}
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {formatDistance(story.distance)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              {story.narrators.length}位
             </span>
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
@@ -128,11 +133,15 @@ export const StoryCard = ({ story, compact = false }: StoryCardProps) => {
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
-              {formatDuration(story.duration)}
+              {formatDuration(defaultDuration)}
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="w-4 h-4" />
               {formatDistance(story.distance)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              {story.narrators.length}
             </span>
           </div>
           <div className="flex flex-wrap gap-1">
