@@ -350,34 +350,7 @@ export const StoryPlayer = () => {
           </div>
         </section>
 
-        {isPlaying && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[calc(var(--app-max-width)-2rem)] bg-card-bg/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-card-border shadow-lg pb-safe">
-            <div className="flex items-center gap-3 min-w-0">
-              <img 
-                src={coverSrc}
-                alt={story.title}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-serif font-semibold text-light-blue truncate text-sm sm:text-base">{story.title}</p>
-                <p className="text-xs sm:text-sm text-gray-400 truncate">
-                  {currentCompanion?.name} · {formatTime(currentTimeSeconds)} / {formatTime(displayDuration)}
-                </p>
-              </div>
-              <button 
-                type="button"
-                onClick={toggle}
-                className="w-10 h-10 rounded-full bg-gold flex items-center justify-center shrink-0 touch-target"
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5 text-deep-navy" />
-                ) : (
-                  <Play className="w-5 h-5 text-deep-navy ml-0.5" />
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+
       </PageContent>
     </PageShell>
   );
