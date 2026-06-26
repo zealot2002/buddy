@@ -1,25 +1,32 @@
 import {
-  FORBIDDEN_CITY_NARRATIONS,
-  SUMMER_PALACE_NARRATIONS,
-  type NarrationScript,
   estimateSpeechDuration,
-  pickRandomScript,
   normalizeCompanionId,
 } from './narrations.js';
-import { SHENYANG_SANHAO_NARRATIONS } from './shenyang-sanhao-narrations.js';
-import { SHENYANG_SANHAO_FENCES, WALK_FENCE_LABELS } from './walk-fence-registry.js';
-import { getFenceRadiusMeters, WALK_LISTEN_CONFIG } from '../config/walk-config.js';
+import {
+  GONG_WANG_FU_FENCE_LABELS,
+  GONG_WANG_FU_RADIUS,
+  GONG_WANG_FU_WALK_POINTS,
+} from './gong-wang-fu-walk.js';
+import { WALK_LISTEN_CONFIG } from '../config/walk-config.js';
 
 export interface WalkScriptVariant {
   versionId: string;
   content: string;
   styleNote?: string;
+  label?: string;
 }
 
+/** L1 + L2-A + L2-B + L3 树形语料 */
+export interface WalkTreeContent {
+  l1: WalkScriptVariant;
+  l2A: WalkScriptVariant;
+  l2B: WalkScriptVariant;
+  l3: WalkScriptVariant;
+}
+
+/** @deprecated 旧版 auto/tap 结构，保留类型兼容 */
 export interface WalkCompanionScripts {
-  /** 场景A：围栏自动触发，与眼前画面强绑定 */
   auto: { variants: WalkScriptVariant[] };
-  /** 场景B：围栏内点击头像，延伸解读，与 auto 不同稿 */
   tap: { variants: WalkScriptVariant[] };
 }
 
@@ -27,12 +34,15 @@ export interface WalkSnippet {
   id: string;
   label?: string;
   areaTag?: string;
+  primaryCompanionId: string;
   location: {
     lat: number;
     lng: number;
     radiusMeters: number;
   };
-  scripts: Record<string, WalkCompanionScripts>;
+  tree: WalkTreeContent;
+  /** @deprecated */
+  scripts?: Record<string, WalkCompanionScripts>;
 }
 
 export interface WalkSnippetMeta {
@@ -41,6 +51,7 @@ export interface WalkSnippetMeta {
   lat: number;
   lng: number;
   radius: number;
+  primaryCompanionId?: string;
 }
 
 export interface WalkNearbyStatus extends WalkSnippetMeta {
@@ -48,7 +59,15 @@ export interface WalkNearbyStatus extends WalkSnippetMeta {
   inside: boolean;
 }
 
+export type WalkTreeLayer = 'L1' | 'L2' | 'L3';
+export type WalkBranch = 'A' | 'B';
 export type WalkTriggerType = 'auto' | 'tap' | 'offsite';
+
+export interface WalkPlayOptions {
+  layer?: WalkTreeLayer;
+  branch?: WalkBranch;
+  trigger?: WalkTriggerType;
+}
 
 export interface WalkPlayPayload {
   snippetId: string;
@@ -58,106 +77,27 @@ export interface WalkPlayPayload {
   styleNote: string;
   duration: number;
   triggerType: WalkTriggerType;
+  layer?: WalkTreeLayer;
+  branch?: WalkBranch;
+  label?: string;
 }
 
-const COMPANION_IDS = ['su-dongpo', 'lin-huiyin', 'gentle-lady', 'sharp-elder'] as const;
+export const walkSnippets: WalkSnippet[] = GONG_WANG_FU_WALK_POINTS.map((point) => ({
+  id: point.id,
+  label: point.label,
+  areaTag: 'gong-wang-fu',
+  primaryCompanionId: point.primaryCompanionId,
+  location: {
+    lat: point.lat,
+    lng: point.lng,
+    radiusMeters: GONG_WANG_FU_RADIUS,
+  },
+  tree: point.tree,
+}));
 
-function splitIntoParts(content: string, partIndex: number, totalParts: number): string {
-  const sentences = content.match(/[^。！？]+[。！？]/g) ?? [content];
-  const chunkSize = Math.max(1, Math.ceil(sentences.length / totalParts));
-  const start = partIndex * chunkSize;
-  return sentences.slice(start, start + chunkSize).join('').trim() || content;
-}
-
-function buildScriptsForFence(
-  narrations: Record<string, NarrationScript[]>,
-  autoPartIndex: number,
-  totalParts: number,
-): Record<string, WalkCompanionScripts> {
-  const scripts: Record<string, WalkCompanionScripts> = {};
-  const tapPartIndex = (autoPartIndex + 1) % totalParts;
-
-  for (const companionId of COMPANION_IDS) {
-    const primary = narrations[companionId]?.[0];
-    if (!primary) continue;
-
-    const autoContent = splitIntoParts(primary.content, autoPartIndex, totalParts);
-    const tapContent = splitIntoParts(primary.content, tapPartIndex, totalParts);
-
-    scripts[companionId] = {
-      auto: {
-        variants: [
-          {
-            versionId: `${primary.versionId}-auto-${autoPartIndex + 1}`,
-            content: autoContent,
-            styleNote: primary.styleNote,
-          },
-        ],
-      },
-      tap: {
-        variants: [
-          {
-            versionId: `${primary.versionId}-tap-${tapPartIndex + 1}`,
-            content: tapContent,
-            styleNote: `${primary.styleNote} · 延伸解读`,
-          },
-        ],
-      },
-    };
-  }
-
-  return scripts;
-}
-
-const FORBIDDEN_FENCES = [
-  { id: 'walk-fc-wumen', lat: 39.9139, lng: 116.3974 },
-  { id: 'walk-fc-taihedian', lat: 39.9163, lng: 116.3972 },
-  { id: 'walk-fc-qianqing', lat: 39.918, lng: 116.3973 },
-  { id: 'walk-fc-yuhuayuan', lat: 39.9238, lng: 116.3967 },
-];
-
-const SUMMER_FENCES = [
-  { id: 'walk-sp-dongdi', lat: 39.9995, lng: 116.278 },
-  { id: 'walk-sp-foxiangge', lat: 39.9978, lng: 116.2755 },
-  { id: 'walk-sp-shifang', lat: 39.998, lng: 116.273 },
-  { id: 'walk-sp-qikongqiao', lat: 39.9988, lng: 116.279 },
-];
-
-export const walkSnippets: WalkSnippet[] = [
-  ...FORBIDDEN_FENCES.map((fence, index) => ({
-    id: fence.id,
-    areaTag: 'forbidden-city',
-    location: {
-      lat: fence.lat,
-      lng: fence.lng,
-      radiusMeters: getFenceRadiusMeters('forbidden-city'),
-    },
-    scripts: buildScriptsForFence(FORBIDDEN_CITY_NARRATIONS, index, FORBIDDEN_FENCES.length),
-  })),
-  ...SUMMER_FENCES.map((fence, index) => ({
-    id: fence.id,
-    areaTag: 'summer-palace',
-    location: {
-      lat: fence.lat,
-      lng: fence.lng,
-      radiusMeters: getFenceRadiusMeters('summer-palace'),
-    },
-    scripts: buildScriptsForFence(SUMMER_PALACE_NARRATIONS, index, SUMMER_FENCES.length),
-  })),
-  ...SHENYANG_SANHAO_FENCES.map((fence, index) => ({
-    id: fence.id,
-    label: fence.label,
-    areaTag: 'shenyang-sanhao',
-    location: {
-      lat: fence.lat,
-      lng: fence.lng,
-      radiusMeters: fence.radiusMeters,
-    },
-    scripts: buildScriptsForFence(SHENYANG_SANHAO_NARRATIONS, index, SHENYANG_SANHAO_FENCES.length),
-  })),
-];
-
-export { WALK_FENCE_LABELS };
+export const WALK_FENCE_LABELS: Record<string, string> = {
+  ...GONG_WANG_FU_FENCE_LABELS,
+};
 
 export function findWalkSnippet(id: string): WalkSnippet | undefined {
   return walkSnippets.find((snippet) => snippet.id === id);
@@ -180,38 +120,62 @@ export function toWalkSnippetMeta(snippet: WalkSnippet): WalkSnippetMeta {
     lat: snippet.location.lat,
     lng: snippet.location.lng,
     radius: snippet.location.radiusMeters,
+    primaryCompanionId: snippet.primaryCompanionId,
   };
+}
+
+function resolveTreeVariant(
+  tree: WalkTreeContent,
+  layer: WalkTreeLayer,
+  branch: WalkBranch,
+): WalkScriptVariant | null {
+  switch (layer) {
+    case 'L1':
+      return tree.l1;
+    case 'L2':
+      return branch === 'B' ? tree.l2B : tree.l2A;
+    case 'L3':
+      return tree.l3;
+    default:
+      return null;
+  }
 }
 
 export function resolveWalkPlay(
   snippetId: string,
-  companionId: string,
-  trigger: 'auto' | 'tap' = 'auto',
+  companionId?: string,
+  options: WalkPlayOptions | WalkTriggerType = 'auto',
 ): WalkPlayPayload | null {
   const snippet = findWalkSnippet(snippetId);
   if (!snippet) return null;
 
-  const normalizedId = normalizeCompanionId(companionId);
-  const companionScripts = snippet.scripts[normalizedId];
-  const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
-  if (!pool?.variants.length) return null;
+  const resolvedOptions: WalkPlayOptions =
+    typeof options === 'string' ? { trigger: options } : options;
+  const layer = resolvedOptions.layer ?? 'L1';
+  const branch = resolvedOptions.branch ?? 'A';
+  const normalizedId = normalizeCompanionId(companionId || snippet.primaryCompanionId);
+  const variant = resolveTreeVariant(snippet.tree, layer, branch);
+  if (!variant) return null;
 
-  const picked = pickRandomScript(
-    pool.variants.map((variant) => ({
-      versionId: variant.versionId,
-      content: variant.content,
-      styleNote: variant.styleNote ?? '',
-    })),
-  );
+  const triggerType =
+    resolvedOptions.trigger ?? (layer === 'L1' ? 'auto' : 'tap');
 
   return {
     snippetId,
     companionId: normalizedId,
-    versionId: picked.versionId,
-    content: picked.content,
-    styleNote: picked.styleNote,
-    duration: estimateSpeechDuration(picked.content),
-    triggerType: trigger,
+    versionId: variant.versionId,
+    content: variant.content,
+    styleNote: variant.styleNote ?? '',
+    duration: estimateSpeechDuration(variant.content),
+    triggerType,
+    layer,
+    branch: layer === 'L2' ? branch : undefined,
+    label:
+      layer === 'L2'
+        ? branch === 'B'
+          ? snippet.tree.l2B.label
+          : snippet.tree.l2A.label
+        : snippet.label,
   };
 }
 
@@ -248,4 +212,8 @@ export function getNearbyWalkStatus(lat: number, lng: number, limit = WALK_LISTE
     })
     .sort((a, b) => a.distanceMeters - b.distanceMeters)
     .slice(0, limit);
+}
+
+export function getWalkPointById(id: string): WalkSnippet | undefined {
+  return findWalkSnippet(id);
 }

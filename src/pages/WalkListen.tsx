@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
-import { fetchWalkTap, fetchWalkAreaStatus, useWalkGeofence } from '../hooks/useWalkGeofence';
+import {
+  fetchWalkPlay,
+  fetchWalkAreaStatus,
+  useWalkGeofence,
+  type WalkPlayPayload,
+} from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
+import { GONG_WANG_FU_WALK_POINTS } from '../../api/data/gong-wang-fu-walk.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
-import { useWalkChatStore } from '../store/walk-chat';
+import { useWalkChatStore, type WalkChatBranch, type WalkChatMessage } from '../store/walk-chat';
 import { getCompanionAvatar } from '../../api/data/media.js';
 import { cn, formatBeijingTime } from '@/lib/utils';
 
@@ -18,19 +24,28 @@ interface WalkNearbyStatus {
   radius: number;
 }
 
+const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
+
 export const WalkListen = () => {
   const { companions } = useCompanions();
   const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
   const { playWalk } = usePlayerStore();
-  const { messages, addMessage } = useWalkChatStore();
+  const { messages, addMessage, hideThreadChildren } = useWalkChatStore();
 
   const [companionId, setCompanionId] = useState(defaultCompanionId);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
+  const [simPointId, setSimPointId] = useState(GONG_WANG_FU_WALK_POINTS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const threadsRef = useRef<Record<string, { snippetId: string; companionId: string }>>({});
+
+  const simPoint = useMemo(
+    () => GONG_WANG_FU_WALK_POINTS.find((point) => point.id === simPointId) ?? GONG_WANG_FU_WALK_POINTS[0],
+    [simPointId],
+  );
 
   const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number) => {
     try {
@@ -57,6 +72,12 @@ export const WalkListen = () => {
   }, [defaultCompanionId]);
 
   useEffect(() => {
+    if (SIMULATION_ENABLED) {
+      setLocation(simPoint.lat, simPoint.lng, simPoint.label);
+      refreshAreaStatus(simPoint.lat, simPoint.lng);
+      return;
+    }
+
     if (!navigator.geolocation) {
       setError('当前设备不支持定位');
       return;
@@ -74,12 +95,15 @@ export const WalkListen = () => {
         setError('定位失败，将使用默认位置');
         setLocating(false);
       },
-      { enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy, timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs },
+      {
+        enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy,
+        timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs,
+      },
     );
-  }, [setLocation, setLocating, setError, refreshAreaStatus]);
+  }, [setLocation, setLocating, setError, refreshAreaStatus, simPoint]);
 
   useEffect(() => {
-    if (!navigator.geolocation) return undefined;
+    if (SIMULATION_ENABLED || !navigator.geolocation) return undefined;
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -90,7 +114,11 @@ export const WalkListen = () => {
       (error) => {
         console.error('joyjoy geolocation watch failed:', error);
       },
-      { enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy, maximumAge: WALK_LISTEN_CONFIG.geolocation.maximumAgeMs, timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs },
+      {
+        enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy,
+        maximumAge: WALK_LISTEN_CONFIG.geolocation.maximumAgeMs,
+        timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs,
+      },
     );
 
     return () => {
@@ -102,52 +130,124 @@ export const WalkListen = () => {
     if (!isLocating) {
       refreshAreaStatus(lat, lng);
     }
-  }, [lat, lng, isLocating, companionId, refreshAreaStatus]);
+  }, [lat, lng, isLocating, refreshAreaStatus]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  const handleSnippet = useCallback(
+  const appendCompanionLine = useCallback(
     (
-      payload: { snippetId: string; content: string; duration: number; triggerType?: string },
-      source: 'geofence' | 'tap',
+      payload: WalkPlayPayload,
+      meta: { threadId?: string; layer?: WalkChatMessage['layer']; branch?: WalkChatBranch; source?: WalkChatMessage['source'] },
     ) => {
-      if (!hasAreaContent) return;
-      addMessage({ role: 'companion', content: payload.content, source });
-      playWalk(payload, companionId, source === 'geofence');
+      addMessage({
+        role: 'companion',
+        content: payload.content,
+        source: meta.source ?? 'geofence',
+        snippetId: payload.snippetId,
+        companionId: payload.companionId,
+        threadId: meta.threadId,
+        layer: meta.layer ?? payload.layer ?? 'L1',
+        branch: meta.branch ?? payload.branch,
+      });
+      playWalk(payload, payload.companionId, true);
+      setCompanionId(payload.companionId);
     },
-    [addMessage, playWalk, companionId, hasAreaContent],
+    [addMessage, playWalk],
   );
 
-  useWalkGeofence({
-    enabled: hasAreaContent,
+  const handleGeofenceTrigger = useCallback(
+    (payload: WalkPlayPayload) => {
+      if (!SIMULATION_ENABLED && !hasAreaContent) return;
+
+      const threadId = `thread-${payload.snippetId}-${Date.now()}`;
+      threadsRef.current[threadId] = {
+        snippetId: payload.snippetId,
+        companionId: payload.companionId,
+      };
+
+      appendCompanionLine(payload, {
+        threadId,
+        layer: 'L1',
+        source: 'geofence',
+      });
+    },
+    [appendCompanionLine, hasAreaContent],
+  );
+
+  const { resetSession, triggerPoint } = useWalkGeofence({
+    enabled: SIMULATION_ENABLED || hasAreaContent,
     lat,
     lng,
-    companionId,
-    onTrigger: (payload) => handleSnippet(payload, 'geofence'),
+    simulationMode: SIMULATION_ENABLED,
+    onTrigger: handleGeofenceTrigger,
   });
 
-  const handleCompanionTap = async () => {
-    if (isFetching || !companion || !hasAreaContent) return;
+  const handleExpandLayer = async (
+    threadId: string,
+    layer: 'L2' | 'L3',
+    branch: WalkChatBranch = 'A',
+  ) => {
+    const thread = threadsRef.current[threadId];
+    if (!thread || isFetching) return;
 
     setIsFetching(true);
     try {
-      const payload = await fetchWalkTap(lat, lng, companionId);
-      if (payload.triggerType === 'offsite') return;
-      handleSnippet(payload, 'tap');
+      const payload = await fetchWalkPlay(thread.snippetId, thread.companionId, {
+        layer,
+        branch,
+        trigger: 'tap',
+      });
+      appendCompanionLine(payload, {
+        threadId,
+        layer,
+        branch: layer === 'L2' ? branch : undefined,
+        source: layer === 'L3' ? 'deep' : branch === 'B' ? 'branch' : 'expand',
+      });
     } catch (error) {
-      console.error('joyjoy walk tap failed:', error);
+      console.error('joyjoy walk expand failed:', error);
     } finally {
       setIsFetching(false);
     }
   };
 
+  const handleCollapseThread = (threadId: string) => {
+    hideThreadChildren(threadId);
+  };
+
+  const handleSimPointSelect = async (pointId: string) => {
+    const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === pointId);
+    if (!point) return;
+
+    setSimPointId(pointId);
+    setLocation(point.lat, point.lng, point.label);
+    setHasAreaContent(true);
+    setNearestFence({
+      id: point.id,
+      label: point.label,
+      distanceMeters: 0,
+      inside: true,
+      radius: WALK_LISTEN_CONFIG.fence.byAreaTag['gong-wang-fu'] ?? 30,
+    });
+    resetSession();
+    await triggerPoint(pointId, point.lat, point.lng);
+  };
+
+  const initialSimTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (!SIMULATION_ENABLED || initialSimTriggeredRef.current) return;
+    initialSimTriggeredRef.current = true;
+    void handleSimPointSelect(GONG_WANG_FU_WALK_POINTS[0].id);
+  }, []);
+
   useEffect(() => {
     if (messages.length === 0) {
       addMessage({
         role: 'system',
-        content: '欢迎来到边走边听。到了有讲解的区域，旅伴会主动跟你聊。',
+        content: SIMULATION_ENABLED
+          ? '恭王府模拟游览。点选下方站点，旅伴会在对应位置开口。'
+          : '欢迎来到边走边听。到了有讲解的区域，旅伴会主动跟你聊。',
       });
     }
   }, [messages.length, addMessage]);
@@ -165,6 +265,64 @@ export const WalkListen = () => {
     };
   }, []);
 
+  const visibleMessages = messages.filter((message) => !message.hidden);
+
+  const getThreadMessages = (threadId: string) =>
+    messages.filter((message) => message.threadId === threadId && !message.hidden);
+
+  const renderThreadActions = (l1Message: WalkChatMessage) => {
+    if (!l1Message.threadId) return null;
+
+    const threadMessages = getThreadMessages(l1Message.threadId);
+    const l2Message = threadMessages.find((message) => message.layer === 'L2');
+    const l3Message = threadMessages.find((message) => message.layer === 'L3');
+
+    if (!l2Message) {
+      return (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => handleExpandLayer(l1Message.threadId!, 'L2', 'A')}
+            className="rounded-full bg-gold/15 px-3 py-1 text-xs text-gray-800 active:bg-gold/25 disabled:opacity-50"
+          >
+            展开故事
+          </button>
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => handleExpandLayer(l1Message.threadId!, 'L2', 'B')}
+            className="rounded-full bg-black/5 px-3 py-1 text-xs text-gray-700 active:bg-black/10 disabled:opacity-50"
+          >
+            换一个说法
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {!l3Message && (
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => handleExpandLayer(l1Message.threadId!, 'L3')}
+            className="rounded-full bg-gold/15 px-3 py-1 text-xs text-gray-800 active:bg-gold/25 disabled:opacity-50"
+          >
+            再多说点
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => handleCollapseThread(l1Message.threadId!)}
+          className="rounded-full bg-black/5 px-3 py-1 text-xs text-gray-600 active:bg-black/10"
+        >
+          收起
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div
       className="fixed left-1/2 z-10 flex w-full max-w-app -translate-x-1/2 flex-col overflow-hidden bg-[#ededed]"
@@ -180,13 +338,15 @@ export const WalkListen = () => {
             <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
               <MapPin className="h-3 w-3 shrink-0" />
               <span className="truncate">
-                {isLocating
-                  ? '定位中…'
-                  : nearestFence
-                    ? nearestFence.inside
-                      ? `已在「${nearestFence.label ?? nearestFence.id}」`
-                      : `距「${nearestFence.label ?? nearestFence.id}」${nearestFence.distanceMeters}m`
-                    : `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
+                {SIMULATION_ENABLED
+                  ? `模拟 · ${simPoint.label}`
+                  : isLocating
+                    ? '定位中…'
+                    : nearestFence
+                      ? nearestFence.inside
+                        ? `已在「${nearestFence.label ?? nearestFence.id}」`
+                        : `距「${nearestFence.label ?? nearestFence.id}」${nearestFence.distanceMeters}m`
+                      : `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
               </span>
             </p>
           </div>
@@ -218,31 +378,23 @@ export const WalkListen = () => {
 
             <div className="flex items-center gap-2">
               <div className="relative shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCompanionTap}
-                  disabled={!hasAreaContent || isFetching}
-                  aria-label={hasAreaContent ? '听延伸解读' : '当前区域暂无讲解'}
-                  className={cn(
-                    'block rounded-md transition-all',
-                    hasAreaContent && !isFetching && 'active:scale-95',
-                    (!hasAreaContent || isFetching) && 'cursor-default opacity-90',
-                  )}
+                <div
+                  aria-label={hasAreaContent ? '当前站点有讲解' : '当前区域暂无讲解'}
+                  className={cn('block rounded-md', !hasAreaContent && 'opacity-90')}
                 >
                   <img
                     src={getCompanionAvatar(companionId)}
                     alt={companion?.name || '旅伴'}
                     className={cn(
                       'h-10 w-10 rounded-md border-2 bg-white object-cover',
-                      isFetching && 'opacity-60',
                       hasAreaContent ? 'border-emerald-400' : 'border-transparent',
                     )}
                   />
-                </button>
+                </div>
                 {hasAreaContent ? (
                   <span
                     className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white shadow"
-                    title={nearestFence?.label ?? '当前区域'}
+                    title={nearestFence?.label ?? simPoint.label}
                   />
                 ) : (
                   <span
@@ -278,22 +430,48 @@ export const WalkListen = () => {
               </button>
             </div>
 
-            {hasAreaContent && nearestFence?.label && (
+            {hasAreaContent && (nearestFence?.label || simPoint.label) && (
               <div className="flex max-w-full items-center gap-1.5 rounded-full border border-black/5 bg-white px-2.5 py-1">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-                <span className="truncate text-[11px] text-gray-500">{nearestFence.label}</span>
+                <span className="truncate text-[11px] text-gray-500">
+                  {nearestFence?.label ?? simPoint.label}
+                </span>
               </div>
             )}
           </div>
         </div>
+
+        {SIMULATION_ENABLED && (
+          <div className="border-t border-black/5 px-3 py-2">
+            <p className="mb-2 text-[11px] text-gray-500">模拟站点（恭王府动线）</p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {GONG_WANG_FU_WALK_POINTS.map((point) => (
+                <button
+                  key={point.id}
+                  type="button"
+                  onClick={() => handleSimPointSelect(point.id)}
+                  className={cn(
+                    'shrink-0 rounded-full px-2.5 py-1 text-[11px] transition-colors',
+                    simPointId === point.id
+                      ? 'bg-gold/20 text-gray-900 ring-1 ring-gold/40'
+                      : 'bg-white text-gray-600 ring-1 ring-black/5 active:bg-black/5',
+                  )}
+                >
+                  {point.id.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4"
       >
-        {messages.map((message) => {
+        {visibleMessages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
+          const messageCompanionId = message.companionId ?? companionId;
 
           if (message.role === 'system') {
             return (
@@ -309,15 +487,24 @@ export const WalkListen = () => {
           return (
             <div key={message.id} className="flex max-w-[88%] items-start gap-2">
               <img
-                src={getCompanionAvatar(companionId)}
+                src={getCompanionAvatar(messageCompanionId)}
                 alt={companion?.name || '旅伴'}
                 className="h-9 w-9 shrink-0 rounded-md bg-white object-cover"
               />
-              <div className="relative rounded-lg bg-white px-3 py-2.5 shadow-sm before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white before:content-['']">
+              <div className="relative min-w-0 rounded-lg bg-white px-3 py-2.5 shadow-sm before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white before:content-['']">
+                {message.layer === 'L2' && message.branch && (
+                  <p className="mb-1 text-[11px] font-medium text-gold">
+                    {message.branch === 'A' ? '展开故事' : '换一个说法'}
+                  </p>
+                )}
+                {message.layer === 'L3' && (
+                  <p className="mb-1 text-[11px] font-medium text-gold">再多说点</p>
+                )}
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-900">
                   {message.content}
                 </p>
                 <p className="mt-1 text-right text-[11px] text-gray-400">{timeLabel}</p>
+                {message.layer === 'L1' && renderThreadActions(message)}
               </div>
             </div>
           );

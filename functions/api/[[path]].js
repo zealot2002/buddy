@@ -48,11 +48,52 @@ function pickRandomVariant(variants) {
   return variants[Math.floor(Math.random() * variants.length)];
 }
 
-function resolveWalkPlay(snippetId, companionId, trigger = 'auto') {
+function resolveTreeVariant(tree, layer, branch) {
+  if (!tree) return null;
+  switch (layer) {
+    case 'L1':
+      return tree.l1;
+    case 'L2':
+      return branch === 'B' ? tree.l2B : tree.l2A;
+    case 'L3':
+      return tree.l3;
+    default:
+      return null;
+  }
+}
+
+function resolveWalkPlay(snippetId, companionId, options = {}) {
   const snippet = walkSnippets.find((item) => item.id === snippetId);
   if (!snippet) return null;
 
-  const normalizedId = normalizeCompanionId(companionId);
+  const layer = options.layer || 'L1';
+  const branch = options.branch || 'A';
+  const trigger = options.trigger || (layer === 'L1' ? 'auto' : 'tap');
+  const normalizedId = normalizeCompanionId(companionId || snippet.primaryCompanionId || 'su-dongpo');
+
+  if (snippet.tree) {
+    const variant = resolveTreeVariant(snippet.tree, layer, branch);
+    if (!variant?.content) return null;
+
+    return {
+      snippetId,
+      companionId: normalizedId,
+      versionId: variant.versionId,
+      content: variant.content,
+      styleNote: variant.styleNote || '',
+      duration: estimateSpeechDuration(variant.content),
+      triggerType: trigger,
+      layer,
+      branch: layer === 'L2' ? branch : undefined,
+      label:
+        layer === 'L2'
+          ? branch === 'B'
+            ? snippet.tree.l2B?.label
+            : snippet.tree.l2A?.label
+          : snippet.label,
+    };
+  }
+
   const companionScripts = snippet.scripts?.[normalizedId];
   const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
   const legacyPool = companionScripts?.variants;
@@ -103,6 +144,7 @@ function getNearbyWalkMetas(lat, lng, limit = walkConfig.nearby?.limit ?? 20) {
         lat: snippet.location.lat,
         lng: snippet.location.lng,
         radius: snippet.location.radiusMeters,
+        primaryCompanionId: snippet.primaryCompanionId,
         distanceMeters,
         inside,
       };
@@ -178,7 +220,11 @@ export async function onRequest(context) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
-        const payload = resolveWalkPlay(activeSnippet.id, companionId, 'tap');
+        const payload = resolveWalkPlay(activeSnippet.id, activeSnippet.primaryCompanionId, {
+          layer: 'L2',
+          branch: 'A',
+          trigger: 'tap',
+        });
         if (!payload) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
@@ -195,7 +241,9 @@ export async function onRequest(context) {
       if (playMatch) {
         const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');
         const trigger = url.searchParams.get('trigger') === 'tap' ? 'tap' : 'auto';
-        const payload = resolveWalkPlay(playMatch[1], companionId, trigger);
+        const layer = url.searchParams.get('layer') || 'L1';
+        const branch = url.searchParams.get('branch') || 'A';
+        const payload = resolveWalkPlay(playMatch[1], companionId, { layer, branch, trigger });
         if (!payload) {
           return Response.json({ error: 'Walk snippet not found' }, { status: 404, headers: corsHeaders });
         }

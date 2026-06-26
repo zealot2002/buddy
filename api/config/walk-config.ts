@@ -29,6 +29,14 @@ export interface WalkNearbyConfig {
   limit: number;
 }
 
+/** MVP 模拟围栏：不依赖现场 GPS，按站点坐标触发 */
+export interface WalkSimulationConfig {
+  enabled: boolean;
+  areaTag: string;
+  /** 模拟模式下跳过自动触发冷却，便于连点测试 */
+  skipAutoTriggerCooldown: boolean;
+}
+
 export interface WalkListenConfig {
   /** 配置版本，运营端迁移用 */
   version: number;
@@ -36,6 +44,7 @@ export interface WalkListenConfig {
   geolocation: WalkGeoLocationConfig;
   fence: WalkFenceRadiusConfig;
   nearby: WalkNearbyConfig;
+  simulation: WalkSimulationConfig;
 }
 
 export interface WalkAutoTriggerGate {
@@ -57,6 +66,7 @@ export const WALK_LISTEN_CONFIG: WalkListenConfig = {
   },
   fence: {
     byAreaTag: {
+      'gong-wang-fu': 30,
       'forbidden-city': 30,
       'summer-palace': 35,
       'shenyang-sanhao': 80,
@@ -65,6 +75,11 @@ export const WALK_LISTEN_CONFIG: WalkListenConfig = {
   },
   nearby: {
     limit: 20,
+  },
+  simulation: {
+    enabled: true,
+    areaTag: 'gong-wang-fu',
+    skipAutoTriggerCooldown: true,
   },
 };
 

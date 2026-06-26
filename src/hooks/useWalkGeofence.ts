@@ -9,19 +9,22 @@ import type { WalkSnippetMeta } from '../../api/data/walk-snippets.js';
 
 const API_BASE = '/api';
 
-interface WalkPlayPayload {
+export interface WalkPlayPayload {
   snippetId: string;
   companionId: string;
   content: string;
   duration: number;
   triggerType?: 'auto' | 'tap' | 'offsite';
+  layer?: 'L1' | 'L2' | 'L3';
+  branch?: 'A' | 'B';
+  label?: string;
 }
 
 interface UseWalkGeofenceOptions {
   enabled: boolean;
   lat: number;
   lng: number;
-  companionId: string;
+  simulationMode?: boolean;
   onTrigger: (payload: WalkPlayPayload, meta: WalkSnippetMeta) => void;
 }
 
@@ -31,14 +34,23 @@ async function fetchNearbyMetas(lat: number, lng: number): Promise<WalkSnippetMe
   return res.json();
 }
 
-async function fetchWalkPlay(
+export async function fetchWalkPlay(
   snippetId: string,
   companionId: string,
-  trigger: 'auto' | 'tap' = 'auto',
+  options: {
+    layer?: 'L1' | 'L2' | 'L3';
+    branch?: 'A' | 'B';
+    trigger?: 'auto' | 'tap';
+  } = {},
 ): Promise<WalkPlayPayload> {
-  const res = await fetch(
-    `${API_BASE}/walk/${snippetId}/play?companionId=${encodeURIComponent(companionId)}&trigger=${trigger}`,
-  );
+  const params = new URLSearchParams({
+    companionId,
+    trigger: options.trigger ?? (options.layer === 'L1' || !options.layer ? 'auto' : 'tap'),
+  });
+  if (options.layer) params.set('layer', options.layer);
+  if (options.branch) params.set('branch', options.branch);
+
+  const res = await fetch(`${API_BASE}/walk/${snippetId}/play?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch walk snippet content');
   return res.json();
 }
@@ -47,7 +59,7 @@ export function useWalkGeofence({
   enabled,
   lat,
   lng,
-  companionId,
+  simulationMode = WALK_LISTEN_CONFIG.simulation.enabled,
   onTrigger,
 }: UseWalkGeofenceOptions) {
   const triggeredRef = useRef<Set<string>>(new Set());
@@ -60,7 +72,7 @@ export function useWalkGeofence({
   }, [onTrigger]);
 
   const checkGeofences = useCallback(
-    async (currentLat: number, currentLng: number) => {
+    async (currentLat: number, currentLng: number, forcePointId?: string) => {
       if (!enabled) return;
 
       if (!metasRef.current.length) {
@@ -77,19 +89,29 @@ export function useWalkGeofence({
           meta,
           distance: haversineMeters(currentLat, currentLng, meta.lat, meta.lng),
         }))
-        .filter(({ meta, distance }) => distance <= meta.radius && !triggeredRef.current.has(meta.id))
+        .filter(({ meta, distance }) => {
+          if (forcePointId) return meta.id === forcePointId;
+          return distance <= meta.radius && !triggeredRef.current.has(meta.id);
+        })
         .sort((a, b) => a.distance - b.distance);
 
       if (!candidates.length) return;
 
-      if (!canAutoTriggerWalk(autoTriggerGateRef.current, currentLat, currentLng, haversineMeters)) {
+      const skipCooldown =
+        simulationMode && WALK_LISTEN_CONFIG.simulation.skipAutoTriggerCooldown;
+
+      if (
+        !skipCooldown
+        && !canAutoTriggerWalk(autoTriggerGateRef.current, currentLat, currentLng, haversineMeters)
+      ) {
         return;
       }
 
       const { meta } = candidates[0];
+      const companionId = meta.primaryCompanionId || 'su-dongpo';
 
       try {
-        const payload = await fetchWalkPlay(meta.id, companionId, 'auto');
+        const payload = await fetchWalkPlay(meta.id, companionId, { layer: 'L1', trigger: 'auto' });
         triggeredRef.current.add(meta.id);
         autoTriggerGateRef.current = {
           at: Date.now(),
@@ -101,7 +123,7 @@ export function useWalkGeofence({
         console.error('joyjoy walk play fetch failed:', error);
       }
     },
-    [enabled, companionId],
+    [enabled, simulationMode],
   );
 
   useEffect(() => {
@@ -113,7 +135,7 @@ export function useWalkGeofence({
 
     checkGeofences(lat, lng);
 
-    if (!navigator.geolocation) return undefined;
+    if (simulationMode || !navigator.geolocation) return undefined;
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -122,13 +144,17 @@ export function useWalkGeofence({
       (error) => {
         console.error('joyjoy geolocation watch failed:', error);
       },
-      { enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy, maximumAge: WALK_LISTEN_CONFIG.geolocation.maximumAgeMs, timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs },
+      {
+        enableHighAccuracy: WALK_LISTEN_CONFIG.geolocation.enableHighAccuracy,
+        maximumAge: WALK_LISTEN_CONFIG.geolocation.maximumAgeMs,
+        timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs,
+      },
     );
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [enabled, lat, lng, companionId, checkGeofences]);
+  }, [enabled, lat, lng, simulationMode, checkGeofences]);
 
   const resetSession = useCallback(() => {
     triggeredRef.current = new Set();
@@ -136,7 +162,16 @@ export function useWalkGeofence({
     autoTriggerGateRef.current = null;
   }, []);
 
-  return { resetSession };
+  const triggerPoint = useCallback(
+    async (pointId: string, pointLat: number, pointLng: number) => {
+      triggeredRef.current.delete(pointId);
+      metasRef.current = [];
+      await checkGeofences(pointLat, pointLng, pointId);
+    },
+    [checkGeofences],
+  );
+
+  return { resetSession, triggerPoint };
 }
 
 export async function fetchWalkTap(
@@ -151,7 +186,6 @@ export async function fetchWalkTap(
   return res.json();
 }
 
-/** 围栏外调皮话（仅灰色状态灯触发） */
 export async function fetchWalkOffsite(companionId: string): Promise<WalkPlayPayload> {
   const res = await fetch(
     `${API_BASE}/walk/offsite?companionId=${encodeURIComponent(companionId)}`,
