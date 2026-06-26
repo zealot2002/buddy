@@ -45,7 +45,7 @@ export const WalkListen = () => {
   const { companions } = useCompanions();
   const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
-  const { playWalk } = usePlayerStore();
+  const { playWalk, isPlaying, mode } = usePlayerStore();
   const { messages, addMessage, updateMessage } = useWalkChatStore();
   const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
 
@@ -58,6 +58,23 @@ export const WalkListen = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
   const messageCountRef = useRef(0);
+
+  type CompanionState = 'idle' | 'preparing' | 'speaking';
+
+  const [companionState, setCompanionState] = useState<CompanionState>('idle');
+
+  useEffect(() => {
+    const isFetching = fetchingMessageId !== null;
+    const isSpeaking = isPlaying && mode === 'walk';
+
+    if (isFetching) {
+      setCompanionState('preparing');
+    } else if (isSpeaking) {
+      setCompanionState('speaking');
+    } else {
+      setCompanionState('idle');
+    }
+  }, [fetchingMessageId, isPlaying, mode]);
 
   const simPoint = useMemo(
     () => GONG_WANG_FU_FENCES.find((point) => point.id === simPointId) ?? GONG_WANG_FU_FENCES[0],
@@ -83,7 +100,6 @@ export const WalkListen = () => {
   }, []);
 
   const companion = companions.find((item) => item.id === defaultCompanionId) ?? companions[0];
-  const isFetching = fetchingMessageId !== null;
 
   useEffect(() => {
     setCompanionHintPhase('in');
@@ -395,9 +411,14 @@ export const WalkListen = () => {
                 我的页可改默认旅伴
               </div>
             )}
-            {isFetching && (
+            {companionState === 'preparing' && (
               <div className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-40 whitespace-nowrap rounded-lg bg-white/95 px-2.5 py-1.5 text-[11px] text-gray-500 shadow-md ring-1 ring-black/5">
                 正在组织语言…
+              </div>
+            )}
+            {companionState === 'speaking' && (
+              <div className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-40 whitespace-nowrap rounded-lg bg-white/95 px-2.5 py-1.5 text-[11px] text-gray-500 shadow-md ring-1 ring-black/5">
+                讲解中…
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -415,17 +436,7 @@ export const WalkListen = () => {
                     )}
                   />
                 </div>
-                {hasAreaContent ? (
-                  <span
-                    className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white shadow"
-                    title={nearestFence?.label ?? simPoint.label}
-                  />
-                ) : (
-                  <span
-                    className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-gray-400 ring-2 ring-white shadow"
-                    title="当前区域暂无讲解"
-                  />
-                )}
+
               </div>
 
               <div className="flex h-10 min-w-0 items-center justify-end text-right">

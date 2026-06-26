@@ -60,7 +60,7 @@ export const StoryCard = ({ story, compact = false, layout = 'grid' }: StoryCard
           type="button"
           onClick={handlePlay}
           className={cn(
-            'rounded-full bg-gradient-to-r from-gold to-amber flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-target',
+            'rounded-full bg-gradient-to-r from-gold/60 to-amber/60 flex items-center justify-center shadow-lg active:scale-95 transition-transform touch-target',
             compact ? 'w-11 h-11' : 'w-14 h-14 animate-pulse-glow',
           )}
         >
