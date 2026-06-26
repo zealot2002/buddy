@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Discover } from "@/pages/Discover";
 import { WalkListen } from "@/pages/WalkListen";
 import { Companions } from "@/pages/Companions";
@@ -9,7 +9,7 @@ import { StoriesPage } from "@/pages/StoriesPage";
 import { PlaylistPage } from "@/pages/PlaylistPage";
 import { BottomNav } from "@/components/BottomNav";
 
-const MAIN_TAB_PATHS = ['/', '/walk', '/profile'];
+const MAIN_TAB_PATHS = ['/discover', '/walk', '/profile'];
 
 const MainApp = () => {
   const navigate = useNavigate();
@@ -19,8 +19,9 @@ const MainApp = () => {
   return (
     <div className="app-shell">
       <Routes>
-        <Route path="/" element={<Discover />} />
+        <Route path="/" element={<Navigate to="/walk" replace />} />
         <Route path="/walk" element={<WalkListen />} />
+        <Route path="/discover" element={<Discover />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/stories" element={<StoriesPage />} />
         <Route path="/playlist" element={<PlaylistPage />} />

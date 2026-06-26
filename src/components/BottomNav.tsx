@@ -7,8 +7,8 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { path: '/', icon: Compass, label: '发现' },
-  { path: '/walk', icon: Footprints, label: '边走边听' },
+  { path: '/discover', icon: Compass, label: '城市故事' },
+  { path: '/walk', icon: Footprints, label: '同游' },
   { path: '/profile', icon: User, label: '我的' },
 ];
 
