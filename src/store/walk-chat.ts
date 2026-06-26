@@ -2,6 +2,16 @@ import { create } from 'zustand';
 
 export type WalkChatLayer = 'L1' | 'L2' | 'L3';
 export type WalkChatBranch = 'A' | 'B';
+export type WalkCardAct = 0 | 1 | 2;
+
+export interface WalkCardLayers {
+  l1: string;
+  l2A?: string;
+  l2B?: string;
+  l3?: string;
+  l2ALabel?: string;
+  l2BLabel?: string;
+}
 
 export interface WalkChatMessage {
   id: string;
@@ -11,16 +21,18 @@ export interface WalkChatMessage {
   source?: 'geofence' | 'expand' | 'branch' | 'deep';
   snippetId?: string;
   companionId?: string;
-  threadId?: string;
   layer?: WalkChatLayer;
   branch?: WalkChatBranch;
-  hidden?: boolean;
+  /** 卡片内当前幕：0=L1, 1=L2, 2=L3 */
+  cardAct?: WalkCardAct;
+  layers?: WalkCardLayers;
+  spotLabel?: string;
 }
 
 interface WalkChatState {
   messages: WalkChatMessage[];
   addMessage: (message: Omit<WalkChatMessage, 'id' | 'timestamp'> & { id?: string; timestamp?: number }) => string;
-  hideThreadChildren: (threadId: string) => void;
+  updateMessage: (id: string, patch: Partial<WalkChatMessage>) => void;
   clearMessages: () => void;
 }
 
@@ -39,21 +51,20 @@ export const useWalkChatStore = create<WalkChatState>((set) => ({
           source: message.source,
           snippetId: message.snippetId,
           companionId: message.companionId,
-          threadId: message.threadId,
           layer: message.layer,
           branch: message.branch,
-          hidden: message.hidden,
+          cardAct: message.cardAct,
+          layers: message.layers,
+          spotLabel: message.spotLabel,
         },
       ],
     }));
     return id;
   },
-  hideThreadChildren: (threadId) =>
+  updateMessage: (id, patch) =>
     set((state) => ({
       messages: state.messages.map((message) =>
-        message.threadId === threadId && message.layer !== 'L1'
-          ? { ...message, hidden: true }
-          : message,
+        message.id === id ? { ...message, ...patch } : message,
       ),
     })),
   clearMessages: () => set({ messages: [] }),
