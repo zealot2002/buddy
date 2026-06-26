@@ -12,9 +12,11 @@ alwaysApply: false
 
 | 文件 | 内容 |
 |------|------|
-| `walk-config.ts` | 围栏半径、主动触发冷却/位移、定位参数、nearby 上限 |
+| `walk-config.ts` | 围栏半径、主动触发冷却/位移、定位参数、nearby 上限、模拟开关 |
 | `speech-config.ts` | TTS 时长估算 |
 | `index.ts` | `APP_CONFIG` 聚合导出 |
+
+边走边听语料在 `api/data/*.json`（如 `gong-wang-fu.json`），结构见 `docs/walk-listen-architecture.md`。
 
 ## 修改流程
 

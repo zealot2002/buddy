@@ -2,47 +2,43 @@ import {
   estimateSpeechDuration,
   normalizeCompanionId,
 } from './narrations.js';
-import {
-  GONG_WANG_FU_FENCE_LABELS,
-  GONG_WANG_FU_RADIUS,
-  GONG_WANG_FU_WALK_POINTS,
-} from './gong-wang-fu-walk.js';
+import { GONG_WANG_FU_AREA, WALK_AREAS } from './walk-areas.js';
+import type { WalkAct, WalkFence, WalkJoke } from './walk-area-types.js';
 import { WALK_LISTEN_CONFIG } from '../config/walk-config.js';
 
-export interface WalkScriptVariant {
+export type { WalkAct, WalkFence, WalkJoke } from './walk-area-types.js';
+export { GONG_WANG_FU_AREA, WALK_AREAS } from './walk-areas.js';
+
+export type WalkTriggerType = 'auto' | 'tap' | 'offsite';
+
+export interface WalkPlayOptions {
+  jokeId?: string;
+  actIndex?: number;
+  randomJoke?: boolean;
+  /** 随机选段子时排除已播放的 jokeId */
+  excludeJokeIds?: string[];
+  trigger?: WalkTriggerType;
+}
+
+export interface WalkPlayPayload {
+  snippetId: string;
+  companionId: string;
   versionId: string;
   content: string;
-  styleNote?: string;
-  label?: string;
+  styleNote: string;
+  duration: number;
+  triggerType: WalkTriggerType;
+  jokeId?: string;
+  jokeLabel?: string;
+  actIndex?: number;
+  actCount?: number;
+  actLabel?: string;
+  fenceLabel?: string;
 }
 
-/** L1 + L2-A + L2-B + L3 树形语料 */
-export interface WalkTreeContent {
-  l1: WalkScriptVariant;
-  l2A: WalkScriptVariant;
-  l2B: WalkScriptVariant;
-  l3: WalkScriptVariant;
-}
-
-/** @deprecated 旧版 auto/tap 结构，保留类型兼容 */
-export interface WalkCompanionScripts {
-  auto: { variants: WalkScriptVariant[] };
-  tap: { variants: WalkScriptVariant[] };
-}
-
-export interface WalkSnippet {
-  id: string;
-  label?: string;
-  areaTag?: string;
-  primaryCompanionId: string;
-  location: {
-    lat: number;
-    lng: number;
-    radiusMeters: number;
-  };
-  tree: WalkTreeContent;
-  /** @deprecated */
-  scripts?: Record<string, WalkCompanionScripts>;
+/** @deprecated 兼容 sync 字段名，等同 WalkFence */
+export interface WalkSnippet extends WalkFence {
+  areaTag: string;
 }
 
 export interface WalkSnippetMeta {
@@ -59,124 +55,128 @@ export interface WalkNearbyStatus extends WalkSnippetMeta {
   inside: boolean;
 }
 
-export type WalkTreeLayer = 'L1' | 'L2' | 'L3';
-export type WalkBranch = 'A' | 'B';
-export type WalkTriggerType = 'auto' | 'tap' | 'offsite';
+export const walkSnippets: WalkSnippet[] = WALK_AREAS.flatMap((area) =>
+  area.fences.map((fence) => ({
+    ...fence,
+    areaTag: area.areaTag,
+  })),
+);
 
-export interface WalkPlayOptions {
-  layer?: WalkTreeLayer;
-  branch?: WalkBranch;
-  trigger?: WalkTriggerType;
+export const WALK_FENCE_LABELS: Record<string, string> = Object.fromEntries(
+  walkSnippets.map((fence) => [fence.id, fence.label]),
+);
+
+export function findWalkFence(id: string): WalkFence | undefined {
+  return walkSnippets.find((fence) => fence.id === id);
 }
 
-export interface WalkPlayPayload {
-  snippetId: string;
-  companionId: string;
-  versionId: string;
-  content: string;
-  styleNote: string;
-  duration: number;
-  triggerType: WalkTriggerType;
-  layer?: WalkTreeLayer;
-  branch?: WalkBranch;
-  label?: string;
-}
+/** @deprecated */
+export const findWalkSnippet = findWalkFence;
 
-export const walkSnippets: WalkSnippet[] = GONG_WANG_FU_WALK_POINTS.map((point) => ({
-  id: point.id,
-  label: point.label,
-  areaTag: 'gong-wang-fu',
-  primaryCompanionId: point.primaryCompanionId,
-  location: {
-    lat: point.lat,
-    lng: point.lng,
-    radiusMeters: GONG_WANG_FU_RADIUS,
-  },
-  tree: point.tree,
-}));
-
-export const WALK_FENCE_LABELS: Record<string, string> = {
-  ...GONG_WANG_FU_FENCE_LABELS,
-};
-
-export function findWalkSnippet(id: string): WalkSnippet | undefined {
-  return walkSnippets.find((snippet) => snippet.id === id);
-}
-
-export function findActiveWalkSnippet(lat: number, lng: number): WalkSnippet | undefined {
+export function findActiveWalkFence(lat: number, lng: number): WalkFence | undefined {
   return walkSnippets
-    .map((snippet) => ({
-      snippet,
-      distance: haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
+    .map((fence) => ({
+      fence,
+      distance: haversineMeters(lat, lng, fence.location.lat, fence.location.lng),
     }))
-    .filter(({ snippet, distance }) => distance <= snippet.location.radiusMeters)
-    .sort((a, b) => a.distance - b.distance)[0]?.snippet;
+    .filter(({ fence, distance }) => distance <= fence.location.radiusMeters)
+    .sort((a, b) => a.distance - b.distance)[0]?.fence;
 }
 
-export function toWalkSnippetMeta(snippet: WalkSnippet): WalkSnippetMeta {
+/** @deprecated */
+export const findActiveWalkSnippet = findActiveWalkFence;
+
+export function findWalkJoke(fenceId: string, jokeId: string): WalkJoke | undefined {
+  return findWalkFence(fenceId)?.jokes.find((joke) => joke.id === jokeId);
+}
+
+export function pickRandomJoke(fence: WalkFence, excludeJokeIds: string[] = []): WalkJoke | undefined {
+  if (!fence.jokes.length) return undefined;
+  const exclude = new Set(excludeJokeIds);
+  const pool = fence.jokes.filter((joke) => !exclude.has(joke.id));
+  if (!pool.length) return undefined;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export function countUnplayedJokes(fence: WalkFence, excludeJokeIds: string[] = []): number {
+  const exclude = new Set(excludeJokeIds);
+  return fence.jokes.filter((joke) => !exclude.has(joke.id)).length;
+}
+
+export function toWalkSnippetMeta(fence: WalkFence): WalkSnippetMeta {
   return {
-    id: snippet.id,
-    label: snippet.label ?? WALK_FENCE_LABELS[snippet.id],
-    lat: snippet.location.lat,
-    lng: snippet.location.lng,
-    radius: snippet.location.radiusMeters,
-    primaryCompanionId: snippet.primaryCompanionId,
+    id: fence.id,
+    label: fence.label ?? WALK_FENCE_LABELS[fence.id],
+    lat: fence.location.lat,
+    lng: fence.location.lng,
+    radius: fence.location.radiusMeters,
+    primaryCompanionId: fence.primaryCompanionId,
   };
-}
-
-function resolveTreeVariant(
-  tree: WalkTreeContent,
-  layer: WalkTreeLayer,
-  branch: WalkBranch,
-): WalkScriptVariant | null {
-  switch (layer) {
-    case 'L1':
-      return tree.l1;
-    case 'L2':
-      return branch === 'B' ? tree.l2B : tree.l2A;
-    case 'L3':
-      return tree.l3;
-    default:
-      return null;
-  }
 }
 
 export function resolveWalkPlay(
-  snippetId: string,
+  fenceId: string,
   companionId?: string,
   options: WalkPlayOptions | WalkTriggerType = 'auto',
 ): WalkPlayPayload | null {
-  const snippet = findWalkSnippet(snippetId);
-  if (!snippet) return null;
+  const fence = findWalkFence(fenceId);
+  if (!fence) return null;
 
   const resolvedOptions: WalkPlayOptions =
     typeof options === 'string' ? { trigger: options } : options;
-  const layer = resolvedOptions.layer ?? 'L1';
-  const branch = resolvedOptions.branch ?? 'A';
-  const normalizedId = normalizeCompanionId(companionId || snippet.primaryCompanionId);
-  const variant = resolveTreeVariant(snippet.tree, layer, branch);
-  if (!variant) return null;
 
+  let joke: WalkJoke | undefined;
+  if (resolvedOptions.jokeId) {
+    joke = findWalkJoke(fenceId, resolvedOptions.jokeId);
+  } else if (
+    resolvedOptions.randomJoke !== false
+    && (resolvedOptions.actIndex == null || resolvedOptions.actIndex === 0)
+  ) {
+    joke = pickRandomJoke(fence, resolvedOptions.excludeJokeIds ?? []);
+  } else {
+    joke = fence.jokes[0];
+  }
+  if (!joke?.acts.length) return null;
+
+  const actIndex = Math.min(
+    Math.max(resolvedOptions.actIndex ?? 0, 0),
+    joke.acts.length - 1,
+  );
+  const act = joke.acts[actIndex];
+  if (!act) return null;
+
+  const normalizedId = normalizeCompanionId(companionId || fence.primaryCompanionId);
   const triggerType =
-    resolvedOptions.trigger ?? (layer === 'L1' ? 'auto' : 'tap');
+    resolvedOptions.trigger ?? (actIndex === 0 ? 'auto' : 'tap');
 
   return {
-    snippetId,
+    snippetId: fenceId,
     companionId: normalizedId,
-    versionId: variant.versionId,
-    content: variant.content,
-    styleNote: variant.styleNote ?? '',
-    duration: estimateSpeechDuration(variant.content),
+    versionId: act.versionId,
+    content: act.content,
+    styleNote: '',
+    duration: estimateSpeechDuration(act.content),
     triggerType,
-    layer,
-    branch: layer === 'L2' ? branch : undefined,
-    label:
-      layer === 'L2'
-        ? branch === 'B'
-          ? snippet.tree.l2B.label
-          : snippet.tree.l2A.label
-        : snippet.label,
+    jokeId: joke.id,
+    jokeLabel: joke.label,
+    actIndex,
+    actCount: joke.acts.length,
+    actLabel: act.label,
+    fenceLabel: fence.label,
   };
+}
+
+export function resolveWalkAutoPlay(
+  fenceId: string,
+  companionId?: string,
+  excludeJokeIds: string[] = [],
+): WalkPlayPayload | null {
+  return resolveWalkPlay(fenceId, companionId, {
+    randomJoke: true,
+    actIndex: 0,
+    trigger: 'auto',
+    excludeJokeIds,
+  });
 }
 
 export function haversineMeters(
@@ -201,19 +201,19 @@ export function getNearbyWalkMetas(lat: number, lng: number, limit = WALK_LISTEN
 
 export function getNearbyWalkStatus(lat: number, lng: number, limit = WALK_LISTEN_CONFIG.nearby.limit): WalkNearbyStatus[] {
   return walkSnippets
-    .map((snippet) => {
-      const distanceMeters = haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng);
-      const meta = toWalkSnippetMeta(snippet);
+    .map((fence) => {
+      const distanceMeters = haversineMeters(lat, lng, fence.location.lat, fence.location.lng);
+      const meta = toWalkSnippetMeta(fence);
       return {
         ...meta,
         distanceMeters: Math.round(distanceMeters),
-        inside: distanceMeters <= snippet.location.radiusMeters,
+        inside: distanceMeters <= fence.location.radiusMeters,
       };
     })
     .sort((a, b) => a.distanceMeters - b.distanceMeters)
     .slice(0, limit);
 }
 
-export function getWalkPointById(id: string): WalkSnippet | undefined {
-  return findWalkSnippet(id);
+export function getWalkPointById(id: string): WalkFence | undefined {
+  return findWalkFence(id);
 }

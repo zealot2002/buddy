@@ -1,16 +1,20 @@
 import express, { Request, Response } from 'express';
 import {
-  findActiveWalkSnippet,
+  findActiveWalkFence,
   getNearbyWalkMetas,
   getNearbyWalkStatus,
+  resolveWalkAutoPlay,
   resolveWalkPlay,
-  type WalkBranch,
-  type WalkTreeLayer,
 } from '../data/walk-snippets.js';
 import { resolveOffsiteChatter } from '../data/walk-offsite-chatter.js';
 import { normalizeCompanionId } from '../data/narrations.js';
 
 const router = express.Router();
+
+function parseExcludeJokeIds(raw: unknown): string[] {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  return raw.split(',').map((item) => item.trim()).filter(Boolean);
+}
 
 router.get('/nearby', (req: Request, res: Response) => {
   const lat = parseFloat(req.query.lat as string) || 39.9371;
@@ -19,23 +23,20 @@ router.get('/nearby', (req: Request, res: Response) => {
   res.json(verbose ? getNearbyWalkStatus(lat, lng) : getNearbyWalkMetas(lat, lng));
 });
 
-/** 场景B：点击头像 — 围栏内默认 L2-A，围栏外调皮话 */
+/** 围栏内随机未播段子第一幕；围栏外调皮话 */
 router.get('/tap', (req: Request, res: Response) => {
   const lat = parseFloat(req.query.lat as string) || 39.9371;
   const lng = parseFloat(req.query.lng as string) || 116.3862;
   const companionId = normalizeCompanionId((req.query.companionId as string) || 'su-dongpo');
+  const excludeJokeIds = parseExcludeJokeIds(req.query.exclude);
 
-  const activeSnippet = findActiveWalkSnippet(lat, lng);
-  if (!activeSnippet) {
+  const activeFence = findActiveWalkFence(lat, lng);
+  if (!activeFence) {
     res.json(resolveOffsiteChatter(companionId));
     return;
   }
 
-  const payload = resolveWalkPlay(activeSnippet.id, activeSnippet.primaryCompanionId, {
-    layer: 'L2',
-    branch: 'A',
-    trigger: 'tap',
-  });
+  const payload = resolveWalkAutoPlay(activeFence.id, activeFence.primaryCompanionId, excludeJokeIds);
   if (!payload) {
     res.json(resolveOffsiteChatter(companionId));
     return;
@@ -44,23 +45,34 @@ router.get('/tap', (req: Request, res: Response) => {
   res.json(payload);
 });
 
-/** 围栏外调皮话 */
 router.get('/offsite', (req: Request, res: Response) => {
   const companionId = normalizeCompanionId((req.query.companionId as string) || 'su-dongpo');
   res.json(resolveOffsiteChatter(companionId));
 });
 
-/** 按 layer / branch 取树形语料；默认 L1 自动触发 */
+/** fenceId + jokeId + act(0-based)；无 jokeId 时随机未播段子 */
 router.get('/:id/play', (req: Request, res: Response) => {
   const { id } = req.params;
   const companionId = normalizeCompanionId((req.query.companionId as string) || 'su-dongpo');
   const trigger = req.query.trigger === 'tap' ? 'tap' : 'auto';
-  const layer = (req.query.layer as WalkTreeLayer | undefined) || 'L1';
-  const branch = (req.query.branch as WalkBranch | undefined) || 'A';
-  const payload = resolveWalkPlay(id, companionId, { layer, branch, trigger });
+  const jokeId = req.query.jokeId as string | undefined;
+  const actRaw = req.query.act;
+  const actIndex = actRaw != null && actRaw !== '' ? Number.parseInt(String(actRaw), 10) : undefined;
+  const randomJoke = req.query.random !== '0';
+  const excludeJokeIds = parseExcludeJokeIds(req.query.exclude);
+
+  const payload = jokeId || actIndex != null || randomJoke === false
+    ? resolveWalkPlay(id, companionId, {
+        jokeId,
+        actIndex,
+        randomJoke,
+        excludeJokeIds,
+        trigger,
+      })
+    : resolveWalkAutoPlay(id, companionId, excludeJokeIds);
 
   if (!payload) {
-    res.status(404).json({ error: 'Walk snippet not found' });
+    res.status(404).json({ error: 'no_unplayed_jokes_or_fence_not_found' });
     return;
   }
 

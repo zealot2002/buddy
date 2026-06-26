@@ -1,31 +1,20 @@
 import { create } from 'zustand';
 
-export type WalkChatLayer = 'L1' | 'L2' | 'L3';
-export type WalkChatBranch = 'A' | 'B';
-export type WalkCardAct = 0 | 1 | 2;
-
-export interface WalkCardLayers {
-  l1: string;
-  l2A?: string;
-  l2B?: string;
-  l3?: string;
-  l2ALabel?: string;
-  l2BLabel?: string;
-}
-
 export interface WalkChatMessage {
   id: string;
   role: 'companion' | 'system';
   content: string;
   timestamp: number;
-  source?: 'geofence' | 'expand' | 'branch' | 'deep';
+  source?: 'geofence' | 'continue';
+  /** 围栏 id */
   snippetId?: string;
   companionId?: string;
-  layer?: WalkChatLayer;
-  branch?: WalkChatBranch;
-  /** 卡片内当前幕：0=L1, 1=L2, 2=L3 */
-  cardAct?: WalkCardAct;
-  layers?: WalkCardLayers;
+  jokeId?: string;
+  jokeLabel?: string;
+  /** 当前幕 0-based */
+  actIndex?: number;
+  actCount?: number;
+  actLabel?: string;
   spotLabel?: string;
 }
 
@@ -51,10 +40,11 @@ export const useWalkChatStore = create<WalkChatState>((set) => ({
           source: message.source,
           snippetId: message.snippetId,
           companionId: message.companionId,
-          layer: message.layer,
-          branch: message.branch,
-          cardAct: message.cardAct,
-          layers: message.layers,
+          jokeId: message.jokeId,
+          jokeLabel: message.jokeLabel,
+          actIndex: message.actIndex,
+          actCount: message.actCount,
+          actLabel: message.actLabel,
           spotLabel: message.spotLabel,
         },
       ],

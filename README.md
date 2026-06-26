@@ -90,6 +90,18 @@
 | 收藏故事列表 | 展示用户收藏的故事 |
 | 收藏旅伴列表 | 展示用户收藏的旅伴 |
 
+### 6. 边走边听 (`/walk`)
+
+| 功能模块 | 说明 |
+|---------|------|
+| 模拟游览 | 恭王府 12 站点条，MVP 不依赖现场 GPS |
+| 围栏触发 | 进入围栏随机播一个段子的第一幕 |
+| 多段子列表 | 同一围栏每个段子各占聊天列表一行（`addMessage`） |
+| 卡片续读 | 同一段子内「继续说 / 上一幕」切换 1～3 幕（`updateMessage`，不增行） |
+| 旅伴 | 围栏绑定 narrator + 可手动切换 |
+
+> 设计目标、阶段规划、架构约定、语料格式、段子去重与状态机详见 **[docs/walk-listen-architecture.md](docs/walk-listen-architecture.md)**（§0 设计目标与规划思路）。
+
 ---
 
 ## 🏗️ 技术架构
@@ -124,11 +136,18 @@
 │   ├── server.ts                 # Express 服务器启动
 │   ├── index.ts                  # API 入口
 │   ├── data/                     # 模拟数据
+│   │   ├── gong-wang-fu.json     # 恭王府语料（景区→围栏→段子→幕）
+│   │   ├── walk-areas.ts         # 加载景区 JSON
+│   │   ├── walk-snippets.ts      # 围栏索引与 play 解析
 │   │   ├── stories.ts            # 故事数据（含4个故事）
 │   │   └── companions.ts         # 旅伴数据（含4位旅伴）
+│   ├── config/                   # 运营策略（单一数据源）
+│   │   ├── walk-config.ts        # 围栏半径、触发冷却、模拟开关
+│   │   └── speech-config.ts      # TTS 时长估算
 │   ├── routes/                   # API 路由
 │   │   ├── stories.ts            # 故事 API
 │   │   ├── companions.ts         # 旅伴 API
+│   │   ├── walk.ts               # 边走边听 API
 │   │   ├── auth.ts               # 认证 API
 │   │   └── tts.ts                # TTS 语音合成 API
 │   └── worker.ts                 # Cloudflare Worker（备用）
@@ -150,6 +169,7 @@
 │   ├── lib/                      # 工具函数
 │   │   └── utils.ts              # 通用工具函数
 │   ├── pages/                    # 页面组件
+│   │   ├── WalkListen.tsx        # 边走边听页
 │   │   ├── Home.tsx              # 首页
 │   │   ├── StoriesPage.tsx       # 故事列表页
 │   │   ├── StoryPlayer.tsx       # 故事播放页
@@ -164,6 +184,8 @@
 │   ├── App.tsx                   # 应用入口（路由配置）
 │   ├── main.tsx                  # React 渲染入口
 │   └── index.css                 # 全局样式（TailwindCSS）
+├── docs/
+│   └── walk-listen-architecture.md  # 边走边听架构与状态机
 ├── wrangler.toml                 # Cloudflare 部署配置
 ├── vite.config.ts                # Vite 配置
 ├── tailwind.config.js            # TailwindCSS 配置
@@ -575,6 +597,42 @@ interface Companion {
   description: string;           // 描述
 }
 ```
+
+### 边走边听语料（景区 → 围栏 → 段子 → 幕）
+
+完整约定（含 §0 设计目标、阶段规划、段子去重）见 **[docs/walk-listen-architecture.md](docs/walk-listen-architecture.md)**。
+
+```typescript
+// api/data/walk-area-types.ts
+interface WalkArea {
+  id: string;
+  name: string;
+  areaTag: string;
+  fences: WalkFence[];
+}
+
+interface WalkFence {
+  id: string;
+  label: string;
+  primaryCompanionId: string;
+  location: { lat: number; lng: number; radiusMeters: number };
+  jokes: WalkJoke[];             // 进围栏随机抽 1 个
+}
+
+interface WalkJoke {
+  id: string;
+  label?: string;
+  acts: WalkAct[];               // 1～3 幕，用户点「继续说」才续读
+}
+
+interface WalkAct {
+  versionId: string;
+  content: string;
+  label?: string;
+}
+```
+
+语料文件：`api/data/gong-wang-fu.json`（一景区一 JSON）。
 
 ---
 

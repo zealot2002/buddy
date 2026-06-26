@@ -1,355 +1,14 @@
 {
-  "stories": [
-    {
-      "id": "west-lake-bridge",
-      "title": "西湖断桥的传说",
-      "location": {
-        "name": "杭州西湖",
-        "lat": 30.2741,
-        "lng": 120.1551
-      },
-      "distance": 120,
-      "duration": 180,
-      "description": "断桥不断，肝肠寸断。白娘子与许仙的爱情故事，从这里开始流传千年。",
-      "coverImage": "/images/west-lake-bridge.jpg",
-      "defaultCompanionId": "lin-huiyin",
-      "tags": [
-        "爱情",
-        "传说",
-        "西湖"
-      ],
-      "narrators": [
-        {
-          "companionId": "lin-huiyin",
-          "duration": 180,
-          "content": "各位朋友，欢迎来到西湖断桥。站在这座桥上，我仿佛能感受到白娘子与许仙初次相遇时的心跳。你看这烟雨朦胧中的桥身，正如他们的爱情一样，若隐若现，如梦似幻...",
-          "styleNote": "温婉细腻，侧重情感与美学"
-        },
-        {
-          "companionId": "su-dongpo",
-          "duration": 200,
-          "content": "哈哈！各位看官，这断桥可有意思了。断桥不断，肝肠寸断——说的就是白娘子和许仙那档子事。想当年我苏东坡也在西湖边修过苏堤，见过的才子佳人可不少...",
-          "styleNote": "豪放风趣，穿插诗词典故"
-        },
-        {
-          "companionId": "gentle-lady",
-          "duration": 190,
-          "content": "亲爱的朋友，慢慢走，别着急。你看这断桥边的柳树，正随风轻轻摆动，像是在诉说着一个古老的故事。白娘子的传说之所以动人，是因为它告诉我们，真爱可以跨越一切...",
-          "styleNote": "温柔治愈，娓娓道来"
-        },
-        {
-          "companionId": "sharp-elder",
-          "duration": 170,
-          "content": "嘿，我说您可别光看景儿！这断桥有讲究——为什么叫断桥不叫断情桥？因为这桥啊，冬天雪化的时候，从宝石山上看，桥的一端像是断了一样。白娘子那是后人附会的神话...",
-          "styleNote": "犀利直白，讲干货冷知识"
-        }
-      ]
-    },
-    {
-      "id": "forbidden-city-hall",
-      "title": "故宫：紫禁城的千年回响",
-      "location": {
-        "name": "北京故宫",
-        "lat": 39.9163,
-        "lng": 116.3972
-      },
-      "distance": 850,
-      "duration": 180,
-      "description": "走进紫禁城，在朱墙黄瓦间聆听六百年的人间冷暖与皇家往事。",
-      "coverImage": "/images/forbidden-city-hall.jpg",
-      "defaultCompanionId": "su-dongpo",
-      "tags": [
-        "历史",
-        "宫廷",
-        "建筑"
-      ],
-      "narrators": [
-        {
-          "companionId": "su-dongpo",
-          "content": "今晚咱们不赶路，就聊聊紫禁城这大盘子。六百年里，它既是天子的办公室，也是无数小人物的舞台。你记住三个词：中轴、等级、烟火气——下次实地走，会有完全不同的感觉。",
-          "styleNote": "景点概览，豪放视角",
-          "duration": 45
-        },
-        {
-          "companionId": "lin-huiyin",
-          "content": "故宫是中国古建礼制空间最完整的样本。中轴对称、层层递进、色彩等级，都在告诉你“秩序”二字如何被写进砖木之间。先建立这张地图，再走进每一个院子，才不会只看热闹。",
-          "styleNote": "景点概览，建筑视角",
-          "duration": 45
-        },
-        {
-          "companionId": "gentle-lady",
-          "content": "如果把故宫想成一本厚书，今天我们先读目录。红墙是封面，中轴是书脊，那些我们熟悉的名字，都只是其中几个章节。慢慢听，不必一次听完，让好奇心留到真正踏进去那一刻。",
-          "styleNote": "景点概览，治愈视角",
-          "duration": 45
-        },
-        {
-          "companionId": "sharp-elder",
-          "content": "故宫？说白了就是超大号四合院升级版。您先弄清哪儿是“客厅”，哪儿是“卧室”，哪儿是“后院”，再去看那些龙啊凤啊，就不容易被导游带跑偏。今儿咱先听个总纲，明儿现场再细抠。",
-          "styleNote": "景点概览，京味儿点评",
-          "duration": 45
-        }
-      ]
-    },
-    {
-      "id": "suzhou-garden",
-      "title": "拙政园的山水意境",
-      "location": {
-        "name": "苏州拙政园",
-        "lat": 31.299,
-        "lng": 120.6202
-      },
-      "distance": 2300,
-      "duration": 200,
-      "description": "江南园林艺术的巅峰之作，一步一景，处处皆画。",
-      "coverImage": "/images/suzhou-garden.jpg",
-      "defaultCompanionId": "lin-huiyin",
-      "tags": [
-        "园林",
-        "艺术",
-        "江南"
-      ],
-      "narrators": [
-        {
-          "companionId": "lin-huiyin",
-          "duration": 200,
-          "content": "亲爱的朋友，拙政园是我最爱的园林之一。你看这亭台楼阁，山水相映，处处透着江南文人的雅致情怀。借景、框景、对景——每一种造园手法，都是一首无声的诗...",
-          "styleNote": "专业细腻，建筑美学"
-        },
-        {
-          "companionId": "su-dongpo",
-          "duration": 220,
-          "content": "哈哈哈，这拙政园的名字取得有意思！\"拙政\"二字，出自潘岳的《闲居赋》，意思是说自己笨拙，只会从政。说白了就是当官当腻了，归隐田园...",
-          "styleNote": "风趣幽默，文人视角"
-        },
-        {
-          "companionId": "gentle-lady",
-          "duration": 210,
-          "content": "慢慢走，别着急。在拙政园里，时间是用来浪费的。你听这雨声打在芭蕉叶上，滴答滴答，像是大自然在为你演奏一曲轻音乐...",
-          "styleNote": "温柔治愈，沉浸式体验"
-        },
-        {
-          "companionId": "sharp-elder",
-          "duration": 190,
-          "content": "别以为这园子就是种花种草的地方！拙政园的格局大有讲究——远香堂、见山楼、小飞虹，每一处名字都有出处。文人造园，讲究的是\"虽由人作，宛自天开\"...",
-          "styleNote": "犀利直白，讲门道"
-        }
-      ]
-    },
-    {
-      "id": "terracotta-army",
-      "title": "兵马俑的千年秘密",
-      "location": {
-        "name": "西安兵马俑",
-        "lat": 34.3853,
-        "lng": 109.2731
-      },
-      "distance": 5400,
-      "duration": 260,
-      "description": "千古一帝秦始皇的地下军团，沉睡千年后重见天日。",
-      "coverImage": "/images/terracotta-army.jpg",
-      "defaultCompanionId": "sharp-elder",
-      "tags": [
-        "历史",
-        "考古",
-        "秦朝"
-      ],
-      "narrators": [
-        {
-          "companionId": "sharp-elder",
-          "duration": 260,
-          "content": "嘿，您可别小看这些泥人！告诉您几个真东西——兵马俑刚挖出来的时候是彩色的，一见空气就掉色了。还有，每个兵的脸都不一样，据说都是照着真人捏的...",
-          "styleNote": "犀利揭秘，考古视角"
-        },
-        {
-          "companionId": "su-dongpo",
-          "duration": 280,
-          "content": "秦王扫六合，虎视何雄哉！想当年秦始皇嬴政，十三岁登基，三十九岁统一六国，这份功业，前无古人后无来者。这兵马俑，就是他千古霸业的见证...",
-          "styleNote": "豪放大气，帝王功业视角"
-        },
-        {
-          "companionId": "lin-huiyin",
-          "duration": 250,
-          "content": "从艺术史的角度来看，兵马俑是中国古代雕塑艺术的杰作。你看这每一张面孔，都有不同的表情和特征——将军的威严、士兵的坚毅、弓箭手的专注...",
-          "styleNote": "艺术审美，细致观察"
-        },
-        {
-          "companionId": "gentle-lady",
-          "duration": 240,
-          "content": "看着这些沉默了两千多年的士兵，我的心里有种说不出的感动。他们曾经也是有血有肉的年轻人，为了一个帝国的梦想，永远地站在了这里...",
-          "styleNote": "温暖共情，人文视角"
-        }
-      ]
-    },
-    {
-      "id": "summer-palace",
-      "title": "颐和园：皇家园林的诗意",
-      "location": {
-        "name": "北京颐和园",
-        "lat": 39.9999,
-        "lng": 116.2755
-      },
-      "distance": 1500,
-      "duration": 180,
-      "description": "昆明湖畔，长廊画舫，在湖光山色间感受皇家园林的借景之美与时代往事。",
-      "coverImage": "/images/summer-palace.jpg",
-      "defaultCompanionId": "gentle-lady",
-      "tags": [
-        "皇家",
-        "园林",
-        "近代史"
-      ],
-      "narrators": [
-        {
-          "companionId": "su-dongpo",
-          "content": "颐和园最妙在“借景”——湖是镜子，山是背景，园子是诗。你即便人在宾馆，也可以先在脑子里画一条线：昆明湖、万寿山、长廊、桥。有了这条线，到现场就不乱。",
-          "styleNote": "景点概览，山水视角",
-          "duration": 45
-        },
-        {
-          "companionId": "lin-huiyin",
-          "content": "这是中国古典园林向皇家尺度放大后的杰作。它把江南园林的曲折、北方山水的开阔，和宫廷礼制揉在一起。先听框架，再去看每一处的“借”和“障”，会轻松很多。",
-          "styleNote": "景点概览，园林视角",
-          "duration": 45
-        },
-        {
-          "companionId": "gentle-lady",
-          "content": "把它想象成一位老人在讲自己的一生：有风光，也有遗憾；有精致，也有匆忙。我们今晚只听“轮廓”，不急着评判。等风真的从昆明湖面上吹过来，你会更懂这些句子。",
-          "styleNote": "景点概览，舒缓视角",
-          "duration": 45
-        },
-        {
-          "companionId": "sharp-elder",
-          "content": "颐和园名气大，故事也多，真真假假。您先记住一句：这是用银子堆出来的山水。知道了这个前提，再去看石舫、长廊、佛香阁，心里就有数了——美是真的，来路也是真的。",
-          "styleNote": "景点概览，现实视角",
-          "duration": 45
-        }
-      ]
-    },
-    {
-      "id": "yueyang-tower",
-      "title": "岳阳楼的千古绝唱",
-      "location": {
-        "name": "岳阳岳阳楼",
-        "lat": 29.3436,
-        "lng": 113.0853
-      },
-      "distance": 8900,
-      "duration": 220,
-      "description": "范仲淹《岳阳楼记》的诞生地，\"先天下之忧而忧\"的情怀在此传颂。",
-      "coverImage": "/images/yueyang-tower.jpg",
-      "defaultCompanionId": "su-dongpo",
-      "tags": [
-        "诗词",
-        "建筑",
-        "文化"
-      ],
-      "narrators": [
-        {
-          "companionId": "su-dongpo",
-          "duration": 220,
-          "content": "噫！微斯人，吾谁与归？范仲淹的《岳阳楼记》，真是字字珠玑。先天下之忧而忧，后天下之乐而乐——这份胸襟，这份抱负，让我苏东坡也钦佩不已...",
-          "styleNote": "豪放激昂，文人情怀"
-        },
-        {
-          "companionId": "gentle-lady",
-          "duration": 230,
-          "content": "站在岳阳楼上，眺望洞庭湖，心中不由得涌起一种开阔的感觉。范仲淹说得真好——不以物喜，不以己悲。这种境界，值得我们每个人去追寻...",
-          "styleNote": "温暖治愈，人生感悟"
-        },
-        {
-          "companionId": "sharp-elder",
-          "duration": 210,
-          "content": "您可别以为范仲淹真的天天在岳阳楼上待着！告诉您，《岳阳楼记》是他看着一幅画写出来的，他本人根本没去过岳阳楼。这就是文人的厉害之处...",
-          "styleNote": "犀利揭秘，冷知识"
-        },
-        {
-          "companionId": "lin-huiyin",
-          "duration": 200,
-          "content": "岳阳楼的建筑结构非常有特色。三层飞檐，盔顶造型，是中国古建筑中独一无二的形制。从力学角度来看，这种结构既稳固又美观，堪称建筑史上的奇迹...",
-          "styleNote": "专业建筑视角"
-        }
-      ]
-    }
-  ],
-  "companions": [
-    {
-      "id": "su-dongpo",
-      "name": "苏东坡",
-      "avatar": "/images/avatars/su-dongpo.jpeg",
-      "style": "豪放洒脱",
-      "description": "北宋文坛领袖，豪放派诗词大家。他会用风趣幽默的方式，带你领略历史的诗意与豪情。",
-      "persona": "苏轼，字子瞻，号东坡居士。北宋著名文学家、书法家、画家。性格旷达乐观，虽仕途坎坷但始终保持豁达心境。精通诗词、散文、书画，是中国文学史上的全才。讲述时喜欢引用诗词典故，语速偏慢，声音醇厚，带有文人的儒雅与豪迈。",
-      "voiceId": "zh-CN-male-01",
-      "voiceType": "醇厚男声",
-      "toneProfile": {
-        "speed": 0.9,
-        "pitch": 0.85,
-        "volume": 1,
-        "emotion": "cheerful",
-        "pauseBetweenSentences": 400,
-        "pauseBetweenParagraphs": 800
-      },
-      "storiesCount": 12
-    },
-    {
-      "id": "lin-huiyin",
-      "name": "林徽因",
-      "avatar": "/images/avatars/lin-huiyin.jpeg",
-      "style": "知性优雅",
-      "description": "中国第一位女建筑师，兼具才情与美貌。她会用细腻的视角，为你讲述建筑与文学的交融之美。",
-      "persona": "林徽因，中国著名建筑学家、作家。中国第一位女建筑师，参与了国徽和人民英雄纪念碑的设计。才貌双全，兼具理性与感性。讲述时逻辑清晰，语调温婉，善于从建筑美学和历史背景切入，让人感受到建筑背后的人文温度。",
-      "voiceId": "zh-CN-female-01",
-      "voiceType": "温婉女声",
-      "toneProfile": {
-        "speed": 0.95,
-        "pitch": 1.05,
-        "volume": 0.9,
-        "emotion": "gentle",
-        "pauseBetweenSentences": 350,
-        "pauseBetweenParagraphs": 700
-      },
-      "storiesCount": 8
-    },
-    {
-      "id": "gentle-lady",
-      "name": "温柔女士",
-      "avatar": "/images/avatars/gentle-lady.jpeg",
-      "style": "温暖治愈",
-      "description": "一位温暖而善解人意的旅伴，娓娓道来，让你在旅途中感受到家的温馨。",
-      "persona": "一位温柔细腻、善解人意的女性。说话轻声细语，善于观察细节，总能发现生活中的小美好。她的讲解像春风拂面，让人感到安心和治愈。擅长从情感和氛围入手，让听众沉浸在故事的情境中。语速平缓，声音温暖，带有安抚人心的力量。",
-      "voiceId": "zh-CN-female-02",
-      "voiceType": "温暖女声",
-      "toneProfile": {
-        "speed": 0.85,
-        "pitch": 1.1,
-        "volume": 0.85,
-        "emotion": "warm",
-        "pauseBetweenSentences": 500,
-        "pauseBetweenParagraphs": 900
-      },
-      "storiesCount": 15
-    },
-    {
-      "id": "sharp-elder",
-      "name": "毒舌老炮",
-      "avatar": "/images/avatars/sharp-elder.png",
-      "style": "犀利幽默",
-      "description": "一位见多识广的老炮儿，言辞犀利一针见血，用独特视角解读历史背后的故事。",
-      "persona": "一位见多识广、性格直爽的北京老炮儿。说话犀利风趣，喜欢吐槽和揭秘，不爱说场面话。肚子里装着各种冷知识和历史真相，总能从别人想不到的角度看问题。虽然嘴上不饶人，但说的都是干货，听着过瘾还长见识。语速偏快，声音略带沧桑，节奏感强。",
-      "voiceId": "zh-CN-male-02",
-      "voiceType": "沧桑男声",
-      "toneProfile": {
-        "speed": 1.1,
-        "pitch": 0.8,
-        "volume": 1.05,
-        "emotion": "humorous",
-        "pauseBetweenSentences": 300,
-        "pauseBetweenParagraphs": 600
-      },
-      "storiesCount": 10
-    }
-  ],
-  "walkSnippets": [
+  "id": "gong-wang-fu",
+  "name": "恭王府",
+  "areaTag": "gong-wang-fu",
+  "simulation": {
+    "baseLat": 39.9371,
+    "baseLng": 116.3862,
+    "coordStepLat": 0.00022,
+    "radiusMeters": 30
+  },
+  "fences": [
     {
       "id": "gc-01",
       "label": "一宫门外",
@@ -391,8 +50,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-02",
@@ -435,8 +93,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-03",
@@ -479,8 +136,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-04",
@@ -523,8 +179,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-05",
@@ -567,8 +222,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-06",
@@ -611,8 +265,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-07",
@@ -655,8 +308,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-08",
@@ -699,8 +351,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-09",
@@ -743,8 +394,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-10",
@@ -787,8 +437,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-11",
@@ -831,8 +480,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     },
     {
       "id": "gc-12",
@@ -875,134 +523,7 @@
             }
           ]
         }
-      ],
-      "areaTag": "gong-wang-fu"
+      ]
     }
-  ],
-  "walkOffsiteChatter": {
-    "su-dongpo": [
-      {
-        "versionId": "su-dongpo-offsite-1",
-        "styleNote": "无定位，俏皮闲聊",
-        "content": "（笑）这会儿没风景给你讲，要不咱聊聊你刚吃的那碗面？味道比得上我炖的东坡肉吗？"
-      },
-      {
-        "versionId": "su-dongpo-offsite-2",
-        "styleNote": "无定位，俏皮闲聊",
-        "content": "哎，你让我一个古人看导航？此处不在我的「游记」里，要不你往前走两步，看看有没有值得下酒的风物？"
-      },
-      {
-        "versionId": "su-dongpo-offsite-3",
-        "styleNote": "无定位，俏皮闲聊",
-        "content": "歇会儿就歇会儿，我当年在黄州种地，也经常蹲在田埂上发呆。别急，风景会等你的。"
-      },
-      {
-        "versionId": "su-dongpo-offsite-4",
-        "styleNote": "无定位，俏皮闲聊",
-        "content": "你这手指头倒是勤快，点我作甚？我此刻既无酒也无月，只剩一肚子不合时宜——你真要听？"
-      }
-    ],
-    "lin-huiyin": [
-      {
-        "versionId": "lin-huiyin-offsite-1",
-        "styleNote": "无定位，温柔引导",
-        "content": "这里暂时没有我熟悉的老建筑呢。不如你抬头看看这栋楼的天际线，它和天空的夹角，其实也藏着比例的美。"
-      },
-      {
-        "versionId": "lin-huiyin-offsite-2",
-        "styleNote": "无定位，温柔引导",
-        "content": "我们的位置好像跑出了我的图纸范围。不过没关系，四月天在哪里，哪里就值得多看两眼。"
-      },
-      {
-        "versionId": "lin-huiyin-offsite-3",
-        "styleNote": "无定位，温柔引导",
-        "content": "你点我的时候，我正想着梁先生说过的一句话：「建筑师是幸福的，因为他能看到别人看不到的东西。」现在，我把这句话送给你。"
-      },
-      {
-        "versionId": "lin-huiyin-offsite-4",
-        "styleNote": "无定位，温柔引导",
-        "content": "嘘——虽然没到景点，但你有没有听到这城市底下的嗡嗡声？那是时间在赶路呢。"
-      }
-    ],
-    "gentle-lady": [
-      {
-        "versionId": "gentle-lady-offsite-1",
-        "styleNote": "无定位，治愈陪伴",
-        "content": "别急呀，亲爱的，咱们还没到故事开始的地方。先喝口水，整理一下背包肩带，我等你。"
-      },
-      {
-        "versionId": "gentle-lady-offsite-2",
-        "styleNote": "无定位，治愈陪伴",
-        "content": "这会儿没有什么要讲给你听的，就是想告诉你，你走路的样子很好看，继续走吧。"
-      },
-      {
-        "versionId": "gentle-lady-offsite-3",
-        "styleNote": "无定位，治愈陪伴",
-        "content": "点我一下，是不是有点累了？那我们在路边坐一小会儿，看云飘过去，也算是一个小小景点。"
-      },
-      {
-        "versionId": "gentle-lady-offsite-4",
-        "styleNote": "无定位，治愈陪伴",
-        "content": "你看，这里虽然不在我们的清单上，但阳光落在你肩膀上的角度，刚刚好呢。"
-      }
-    ],
-    "sharp-elder": [
-      {
-        "versionId": "sharp-elder-offsite-1",
-        "styleNote": "无定位，京味儿贫嘴",
-        "content": "嘿，您这手指头闲得慌是吧？这儿前不着村后不着店儿，没文物给您叨叨，倒是有个电线杆子，您要听我跟它唠？"
-      },
-      {
-        "versionId": "sharp-elder-offsite-2",
-        "styleNote": "无定位，京味儿贫嘴",
-        "content": "嘎哈呢？想听我白话两句？可咱还没到地儿呢。要不我给来段儿《空城计》垫垫场子？"
-      },
-      {
-        "versionId": "sharp-elder-offsite-3",
-        "styleNote": "无定位，京味儿贫嘴",
-        "content": "别戳了别戳了，再戳我把你定位关了信不信？到了故宫颐和园，我自然开腔，现在先让嗓子歇会儿。"
-      },
-      {
-        "versionId": "sharp-elder-offsite-4",
-        "styleNote": "无定位，京味儿贫嘴",
-        "content": "您瞅瞅这周围，连个古物毛都没有。不过我看着您这双运动鞋倒挺有意思——它是哪朝的文物？"
-      }
-    ]
-  },
-  "appConfig": {
-    "version": 1,
-    "walk": {
-      "version": 1,
-      "autoTrigger": {
-        "cooldownMs": 120000,
-        "minDistanceMeters": 500
-      },
-      "geolocation": {
-        "enableHighAccuracy": true,
-        "maximumAgeMs": 5000,
-        "timeoutMs": 15000
-      },
-      "fence": {
-        "byAreaTag": {
-          "gong-wang-fu": 30,
-          "forbidden-city": 30,
-          "summer-palace": 35,
-          "shenyang-sanhao": 80
-        },
-        "defaultMeters": 50
-      },
-      "nearby": {
-        "limit": 20
-      },
-      "simulation": {
-        "enabled": true,
-        "areaTag": "gong-wang-fu",
-        "skipAutoTriggerCooldown": true
-      }
-    },
-    "speech": {
-      "minDurationSeconds": 45,
-      "charsPerSecond": 4.5
-    }
-  }
+  ]
 }

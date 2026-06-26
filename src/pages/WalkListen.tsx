@@ -8,17 +8,12 @@ import {
   type WalkPlayPayload,
 } from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
-import { GONG_WANG_FU_WALK_POINTS } from '../../api/data/gong-wang-fu-walk.js';
+import { GONG_WANG_FU_FENCES } from '../../api/data/walk-areas.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
-import {
-  useWalkChatStore,
-  type WalkCardAct,
-  type WalkCardLayers,
-  type WalkChatBranch,
-  type WalkChatMessage,
-} from '../store/walk-chat';
+import { useWalkChatStore, type WalkChatMessage } from '../store/walk-chat';
+import { useWalkPlayedJokesStore } from '../store/walk-played-jokes';
 import { getCompanionAvatar } from '../../api/data/media.js';
 import { estimateSpeechDuration } from '../../api/data/narrations.js';
 import { cn, formatBeijingTime } from '@/lib/utils';
@@ -33,12 +28,6 @@ interface WalkNearbyStatus {
 
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
 const WALK_NARRATOR_IDS = ['su-dongpo', 'sharp-elder'] as const;
-
-const ACT_LABELS: Record<WalkCardAct, string> = {
-  0: '第一幕',
-  1: '第二幕',
-  2: '第三幕',
-};
 
 function playCardContent(
   playWalk: ReturnType<typeof usePlayerStore.getState>['playWalk'],
@@ -56,19 +45,20 @@ export const WalkListen = () => {
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
   const { playWalk } = usePlayerStore();
   const { messages, addMessage, updateMessage } = useWalkChatStore();
+  const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
 
   const [companionId, setCompanionId] = useState(defaultCompanionId);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
-  const [simPointId, setSimPointId] = useState(GONG_WANG_FU_WALK_POINTS[0].id);
+  const [simPointId, setSimPointId] = useState(GONG_WANG_FU_FENCES[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
   const messageCountRef = useRef(0);
 
   const simPoint = useMemo(
-    () => GONG_WANG_FU_WALK_POINTS.find((point) => point.id === simPointId) ?? GONG_WANG_FU_WALK_POINTS[0],
+    () => GONG_WANG_FU_FENCES.find((point) => point.id === simPointId) ?? GONG_WANG_FU_FENCES[0],
     [simPointId],
   );
 
@@ -182,23 +172,26 @@ export const WalkListen = () => {
       }
       lastL1TriggerRef.current = { snippetId: payload.snippetId, at: now };
 
-      const spot = GONG_WANG_FU_WALK_POINTS.find((point) => point.id === payload.snippetId);
-
       applyCompanion(payload.companionId);
+      if (payload.jokeId && (payload.actIndex ?? 0) === 0) {
+        markJokePlayed(payload.snippetId, payload.jokeId);
+      }
       addMessage({
         role: 'companion',
         content: payload.content,
         source: 'geofence',
         snippetId: payload.snippetId,
         companionId: payload.companionId,
-        layer: 'L1',
-        cardAct: 0,
-        layers: { l1: payload.content },
-        spotLabel: spot?.label ?? payload.label,
+        jokeId: payload.jokeId,
+        jokeLabel: payload.jokeLabel,
+        actIndex: payload.actIndex ?? 0,
+        actCount: payload.actCount ?? 1,
+        actLabel: payload.actLabel,
+        spotLabel: payload.fenceLabel ?? simPoint.label,
       });
       playWalk(payload, payload.companionId, true);
     },
-    [addMessage, applyCompanion, hasAreaContent, playWalk],
+    [addMessage, applyCompanion, hasAreaContent, markJokePlayed, playWalk, simPoint.label],
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
@@ -210,64 +203,34 @@ export const WalkListen = () => {
   });
 
   const applyCardAct = useCallback(
-    async (message: WalkChatMessage, nextAct: WalkCardAct, branch: WalkChatBranch = message.branch ?? 'A') => {
-      if (!message.snippetId || fetchingMessageId) return;
+    async (message: WalkChatMessage, nextActIndex: number) => {
+      if (!message.snippetId || !message.jokeId || fetchingMessageId) return;
 
       setFetchingMessageId(message.id);
       try {
         const narratorId = message.companionId ?? companionId;
-        const layers: WalkCardLayers = { ...(message.layers ?? { l1: message.content }) };
-        let content: string;
-        let duration: number;
-
-        if (nextAct === 0) {
-          content = layers.l1;
-          duration = estimateSpeechDuration(content);
-        } else if (nextAct === 1) {
-          if (branch === 'B' && layers.l2B) {
-            content = layers.l2B;
-            duration = estimateSpeechDuration(content);
-          } else if (branch === 'A' && layers.l2A) {
-            content = layers.l2A;
-            duration = estimateSpeechDuration(content);
-          } else {
-            const payload = await fetchWalkPlay(message.snippetId, narratorId, {
-              layer: 'L2',
-              branch,
-              trigger: 'tap',
-            });
-            content = payload.content;
-            duration = payload.duration;
-            if (branch === 'B') {
-              layers.l2B = content;
-              layers.l2BLabel = payload.label;
-            } else {
-              layers.l2A = content;
-              layers.l2ALabel = payload.label;
-            }
-          }
-        } else if (layers.l3) {
-          content = layers.l3;
-          duration = estimateSpeechDuration(content);
-        } else {
-          const payload = await fetchWalkPlay(message.snippetId, narratorId, {
-            layer: 'L3',
-            trigger: 'tap',
-          });
-          content = payload.content;
-          duration = payload.duration;
-          layers.l3 = content;
-        }
-
-        updateMessage(message.id, {
-          cardAct: nextAct,
-          content,
-          layers,
-          branch,
-          layer: nextAct === 0 ? 'L1' : nextAct === 1 ? 'L2' : 'L3',
+        const payload = await fetchWalkPlay(message.snippetId, narratorId, {
+          jokeId: message.jokeId,
+          actIndex: nextActIndex,
+          randomJoke: false,
+          trigger: nextActIndex === 0 ? 'auto' : 'tap',
         });
 
-        playCardContent(playWalk, message.snippetId, narratorId, content, duration);
+        updateMessage(message.id, {
+          content: payload.content,
+          actIndex: payload.actIndex ?? nextActIndex,
+          actCount: payload.actCount ?? message.actCount,
+          actLabel: payload.actLabel,
+          jokeLabel: payload.jokeLabel ?? message.jokeLabel,
+        });
+
+        playCardContent(
+          playWalk,
+          message.snippetId,
+          narratorId,
+          payload.content,
+          payload.duration || estimateSpeechDuration(payload.content),
+        );
       } catch (error) {
         console.error('joyjoy walk card act failed:', error);
       } finally {
@@ -278,30 +241,24 @@ export const WalkListen = () => {
   );
 
   const handleContinueStory = (message: WalkChatMessage) => {
-    const act = message.cardAct ?? 0;
-    if (act >= 2) return;
-    void applyCardAct(message, (act + 1) as WalkCardAct, message.branch ?? 'A');
+    const actIndex = message.actIndex ?? 0;
+    const actCount = message.actCount ?? 1;
+    if (actIndex >= actCount - 1) return;
+    void applyCardAct(message, actIndex + 1);
   };
 
   const handlePrevAct = (message: WalkChatMessage) => {
-    const act = message.cardAct ?? 0;
-    if (act <= 0) return;
-    void applyCardAct(message, (act - 1) as WalkCardAct, message.branch ?? 'A');
-  };
-
-  const handleSwitchBranch = (message: WalkChatMessage) => {
-    const act = message.cardAct ?? 0;
-    if (act !== 1) return;
-    const nextBranch: WalkChatBranch = message.branch === 'B' ? 'A' : 'B';
-    void applyCardAct(message, 1, nextBranch);
+    const actIndex = message.actIndex ?? 0;
+    if (actIndex <= 0) return;
+    void applyCardAct(message, actIndex - 1);
   };
 
   const handleSimPointSelect = async (pointId: string) => {
-    const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === pointId);
+    const point = GONG_WANG_FU_FENCES.find((item) => item.id === pointId);
     if (!point) return;
 
     setSimPointId(pointId);
-    setLocation(point.lat, point.lng, point.label);
+    setLocation(point.location.lat, point.location.lng, point.label);
     applyCompanion(point.primaryCompanionId);
     setHasAreaContent(true);
     setNearestFence({
@@ -309,18 +266,18 @@ export const WalkListen = () => {
       label: point.label,
       distanceMeters: 0,
       inside: true,
-      radius: WALK_LISTEN_CONFIG.fence.byAreaTag['gong-wang-fu'] ?? 30,
+      radius: point.location.radiusMeters,
     });
     resetSession();
     lastL1TriggerRef.current = null;
-    await triggerPoint(pointId, point.lat, point.lng);
+    await triggerPoint(pointId, point.location.lat, point.location.lng);
   };
 
   const initialSimTriggeredRef = useRef(false);
   useEffect(() => {
     if (!SIMULATION_ENABLED || initialSimTriggeredRef.current) return;
     initialSimTriggeredRef.current = true;
-    void handleSimPointSelect(GONG_WANG_FU_WALK_POINTS[0].id);
+    void handleSimPointSelect(GONG_WANG_FU_FENCES[0].id);
   }, []);
 
   useEffect(() => {
@@ -328,7 +285,7 @@ export const WalkListen = () => {
       addMessage({
         role: 'system',
         content: SIMULATION_ENABLED
-          ? '恭王府模拟游览。点选下方站点，旅伴会在对应位置开口。'
+          ? '恭王府模拟游览。点选下方站点，旅伴会随机开讲一个段子。感兴趣就点「继续说」。'
           : '欢迎来到边走边听。到了有讲解的区域，旅伴会主动跟你聊。',
       });
     }
@@ -348,12 +305,16 @@ export const WalkListen = () => {
   }, []);
 
   const renderCardFooter = (message: WalkChatMessage) => {
-    const act = message.cardAct ?? 0;
+    const actIndex = message.actIndex ?? 0;
+    const actCount = message.actCount ?? 1;
     const isLoading = fetchingMessageId === message.id;
+    const canContinue = actIndex < actCount - 1;
+
+    if (!canContinue && actIndex === 0) return null;
 
     return (
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-black/5 pt-2">
-        {act > 0 ? (
+        {actIndex > 0 ? (
           <button
             type="button"
             disabled={isLoading}
@@ -366,46 +327,26 @@ export const WalkListen = () => {
           <span className="shrink-0" aria-hidden />
         )}
 
-        <div className="flex min-w-0 items-center justify-end gap-2">
-          {act === 1 && (
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleSwitchBranch(message)}
-              className="shrink-0 text-xs text-gray-500 active:text-gray-800 disabled:opacity-50"
-            >
-              换个说法
-            </button>
-          )}
-          {act < 2 && (
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleContinueStory(message)}
-              className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs text-gray-800 active:bg-gold/25 disabled:opacity-50"
-            >
-              {isLoading ? '加载中…' : '继续说'}
-            </button>
-          )}
-        </div>
+        {canContinue ? (
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => handleContinueStory(message)}
+            className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs text-gray-800 active:bg-gold/25 disabled:opacity-50"
+          >
+            {isLoading ? '加载中…' : '继续说'}
+          </button>
+        ) : (
+          <span className="shrink-0 text-xs text-gray-400">已是最后一幕</span>
+        )}
       </div>
     );
   };
 
-  const getActSubtitle = (message: WalkChatMessage) => {
-    const act = message.cardAct ?? 0;
-    if (act === 0) return null;
-
-    const layers = message.layers;
-    if (act === 1) {
-      const branchLabel =
-        message.branch === 'B'
-          ? layers?.l2BLabel
-          : layers?.l2ALabel;
-      return branchLabel ?? ACT_LABELS[1];
-    }
-
-    return ACT_LABELS[2];
+  const getCardSubtitle = (message: WalkChatMessage) => {
+    const actIndex = message.actIndex ?? 0;
+    if (actIndex === 0) return message.jokeLabel ?? null;
+    return message.actLabel ?? message.jokeLabel ?? null;
   };
 
   return (
@@ -521,7 +462,7 @@ export const WalkListen = () => {
           <div className="border-t border-black/5 px-3 py-2">
             <p className="mb-2 text-[11px] text-gray-500">模拟站点（恭王府动线）</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {GONG_WANG_FU_WALK_POINTS.map((point) => (
+              {GONG_WANG_FU_FENCES.map((point) => (
                 <button
                   key={point.id}
                   type="button"
@@ -548,8 +489,9 @@ export const WalkListen = () => {
         {messages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
           const messageCompanionId = message.companionId ?? companionId;
-          const act = message.cardAct ?? 0;
-          const actSubtitle = getActSubtitle(message);
+          const actIndex = message.actIndex ?? 0;
+          const actCount = message.actCount ?? 1;
+          const cardSubtitle = getCardSubtitle(message);
 
           if (message.role === 'system') {
             return (
@@ -575,13 +517,15 @@ export const WalkListen = () => {
                     {message.spotLabel && (
                       <p className="truncate text-[11px] text-gray-400">{message.spotLabel}</p>
                     )}
-                    {actSubtitle && (
-                      <p className="truncate text-[11px] font-medium text-gold">{actSubtitle}</p>
+                    {cardSubtitle && (
+                      <p className="truncate text-[11px] font-medium text-gold">{cardSubtitle}</p>
                     )}
                   </div>
-                  <span className="shrink-0 text-[10px] tabular-nums text-gray-300">
-                    {act + 1}/3
-                  </span>
+                  {actCount > 1 && (
+                    <span className="shrink-0 text-[10px] tabular-nums text-gray-300">
+                      {actIndex + 1}/{actCount}
+                    </span>
+                  )}
                 </div>
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-900">
                   {message.content}

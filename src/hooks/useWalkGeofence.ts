@@ -6,6 +6,7 @@ import {
 } from '../../api/config/walk-config.js';
 import { haversineMeters } from '../../api/data/walk-snippets.js';
 import type { WalkSnippetMeta } from '../../api/data/walk-snippets.js';
+import { useWalkPlayedJokesStore } from '../store/walk-played-jokes';
 
 const API_BASE = '/api';
 
@@ -15,9 +16,12 @@ export interface WalkPlayPayload {
   content: string;
   duration: number;
   triggerType?: 'auto' | 'tap' | 'offsite';
-  layer?: 'L1' | 'L2' | 'L3';
-  branch?: 'A' | 'B';
-  label?: string;
+  jokeId?: string;
+  jokeLabel?: string;
+  actIndex?: number;
+  actCount?: number;
+  actLabel?: string;
+  fenceLabel?: string;
 }
 
 interface UseWalkGeofenceOptions {
@@ -35,22 +39,29 @@ async function fetchNearbyMetas(lat: number, lng: number): Promise<WalkSnippetMe
 }
 
 export async function fetchWalkPlay(
-  snippetId: string,
+  fenceId: string,
   companionId: string,
   options: {
-    layer?: 'L1' | 'L2' | 'L3';
-    branch?: 'A' | 'B';
+    jokeId?: string;
+    actIndex?: number;
+    randomJoke?: boolean;
+    excludeJokeIds?: string[];
     trigger?: 'auto' | 'tap';
   } = {},
-): Promise<WalkPlayPayload> {
+): Promise<WalkPlayPayload | null> {
   const params = new URLSearchParams({
     companionId,
-    trigger: options.trigger ?? (options.layer === 'L1' || !options.layer ? 'auto' : 'tap'),
+    trigger: options.trigger ?? (options.actIndex === 0 || options.actIndex == null ? 'auto' : 'tap'),
   });
-  if (options.layer) params.set('layer', options.layer);
-  if (options.branch) params.set('branch', options.branch);
+  if (options.jokeId) params.set('jokeId', options.jokeId);
+  if (options.actIndex != null) params.set('act', String(options.actIndex));
+  if (options.randomJoke === false) params.set('random', '0');
+  if (options.excludeJokeIds?.length) {
+    params.set('exclude', options.excludeJokeIds.join(','));
+  }
 
-  const res = await fetch(`${API_BASE}/walk/${snippetId}/play?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/walk/${fenceId}/play?${params.toString()}`);
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error('Failed to fetch walk snippet content');
   return res.json();
 }
@@ -109,10 +120,20 @@ export function useWalkGeofence({
 
       const { meta } = candidates[0];
       const companionId = meta.primaryCompanionId || 'su-dongpo';
+      const excludeJokeIds = useWalkPlayedJokesStore.getState().getPlayedJokeIds(meta.id);
 
       try {
-        const payload = await fetchWalkPlay(meta.id, companionId, { layer: 'L1', trigger: 'auto' });
+        const payload = await fetchWalkPlay(meta.id, companionId, {
+          randomJoke: true,
+          actIndex: 0,
+          trigger: 'auto',
+          excludeJokeIds,
+        });
         triggeredRef.current.add(meta.id);
+        if (!payload) {
+          console.log('joyjoy walk fence jokes exhausted:', meta.id);
+          return;
+        }
         autoTriggerGateRef.current = {
           at: Date.now(),
           lat: currentLat,

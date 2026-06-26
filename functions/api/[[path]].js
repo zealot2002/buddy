@@ -48,70 +48,66 @@ function pickRandomVariant(variants) {
   return variants[Math.floor(Math.random() * variants.length)];
 }
 
-function resolveTreeVariant(tree, layer, branch) {
-  if (!tree) return null;
-  switch (layer) {
-    case 'L1':
-      return tree.l1;
-    case 'L2':
-      return branch === 'B' ? tree.l2B : tree.l2A;
-    case 'L3':
-      return tree.l3;
-    default:
-      return null;
-  }
+function pickRandomJoke(fence, excludeJokeIds = []) {
+  if (!fence?.jokes?.length) return null;
+  const exclude = new Set(excludeJokeIds);
+  const pool = fence.jokes.filter((joke) => !exclude.has(joke.id));
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function resolveWalkPlay(snippetId, companionId, options = {}) {
-  const snippet = walkSnippets.find((item) => item.id === snippetId);
-  if (!snippet) return null;
+function resolveWalkPlay(fenceId, companionId, options = {}) {
+  const fence = walkSnippets.find((item) => item.id === fenceId);
+  if (!fence?.jokes?.length) return null;
 
-  const layer = options.layer || 'L1';
-  const branch = options.branch || 'A';
-  const trigger = options.trigger || (layer === 'L1' ? 'auto' : 'tap');
-  const normalizedId = normalizeCompanionId(companionId || snippet.primaryCompanionId || 'su-dongpo');
+  const trigger = options.trigger || 'auto';
+  const normalizedId = normalizeCompanionId(companionId || fence.primaryCompanionId || 'su-dongpo');
+  const excludeJokeIds = options.excludeJokeIds || [];
 
-  if (snippet.tree) {
-    const variant = resolveTreeVariant(snippet.tree, layer, branch);
-    if (!variant?.content) return null;
-
-    return {
-      snippetId,
-      companionId: normalizedId,
-      versionId: variant.versionId,
-      content: variant.content,
-      styleNote: variant.styleNote || '',
-      duration: estimateSpeechDuration(variant.content),
-      triggerType: trigger,
-      layer,
-      branch: layer === 'L2' ? branch : undefined,
-      label:
-        layer === 'L2'
-          ? branch === 'B'
-            ? snippet.tree.l2B?.label
-            : snippet.tree.l2A?.label
-          : snippet.label,
-    };
+  let joke;
+  if (options.jokeId) {
+    joke = fence.jokes.find((item) => item.id === options.jokeId);
+  } else if (
+    options.randomJoke !== false
+    && (options.actIndex == null || options.actIndex === 0)
+  ) {
+    joke = pickRandomJoke(fence, excludeJokeIds);
+  } else {
+    joke = fence.jokes[0];
   }
+  if (!joke?.acts?.length) return null;
 
-  const companionScripts = snippet.scripts?.[normalizedId];
-  const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
-  const legacyPool = companionScripts?.variants;
-  const variants = pool?.variants || legacyPool;
-  if (!variants?.length) return null;
-
-  const picked = pickRandomVariant(variants);
-  const duration = estimateSpeechDuration(picked.content);
+  const actIndex = Math.min(
+    Math.max(options.actIndex ?? 0, 0),
+    joke.acts.length - 1,
+  );
+  const act = joke.acts[actIndex];
+  if (!act?.content) return null;
 
   return {
-    snippetId,
+    snippetId: fenceId,
     companionId: normalizedId,
-    versionId: picked.versionId,
-    content: picked.content,
-    styleNote: picked.styleNote || '',
-    duration,
-    triggerType: trigger,
+    versionId: act.versionId,
+    content: act.content,
+    styleNote: '',
+    duration: estimateSpeechDuration(act.content),
+    triggerType: options.trigger ?? (actIndex === 0 ? 'auto' : 'tap'),
+    jokeId: joke.id,
+    jokeLabel: joke.label,
+    actIndex,
+    actCount: joke.acts.length,
+    actLabel: act.label,
+    fenceLabel: fence.label,
   };
+}
+
+function resolveWalkAutoPlay(fenceId, companionId, excludeJokeIds = []) {
+  return resolveWalkPlay(fenceId, companionId, {
+    randomJoke: true,
+    actIndex: 0,
+    trigger: 'auto',
+    excludeJokeIds,
+  });
 }
 
 function resolveOffsiteChatter(companionId) {
@@ -220,11 +216,12 @@ export async function onRequest(context) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
-        const payload = resolveWalkPlay(activeSnippet.id, activeSnippet.primaryCompanionId, {
-          layer: 'L2',
-          branch: 'A',
-          trigger: 'tap',
-        });
+        const excludeRaw = url.searchParams.get('exclude');
+        const excludeJokeIds = excludeRaw
+          ? excludeRaw.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+
+        const payload = resolveWalkAutoPlay(activeSnippet.id, activeSnippet.primaryCompanionId, excludeJokeIds);
         if (!payload) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
@@ -241,9 +238,23 @@ export async function onRequest(context) {
       if (playMatch) {
         const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');
         const trigger = url.searchParams.get('trigger') === 'tap' ? 'tap' : 'auto';
-        const layer = url.searchParams.get('layer') || 'L1';
-        const branch = url.searchParams.get('branch') || 'A';
-        const payload = resolveWalkPlay(playMatch[1], companionId, { layer, branch, trigger });
+        const jokeId = url.searchParams.get('jokeId') || undefined;
+        const actRaw = url.searchParams.get('act');
+        const actIndex = actRaw != null && actRaw !== '' ? Number.parseInt(actRaw, 10) : undefined;
+        const randomJoke = url.searchParams.get('random') !== '0';
+        const excludeRaw = url.searchParams.get('exclude');
+        const excludeJokeIds = excludeRaw
+          ? excludeRaw.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+        const payload = jokeId || actIndex != null || randomJoke === false
+          ? resolveWalkPlay(playMatch[1], companionId, {
+              jokeId,
+              actIndex,
+              randomJoke,
+              excludeJokeIds,
+              trigger,
+            })
+          : resolveWalkAutoPlay(playMatch[1], companionId, excludeJokeIds);
         if (!payload) {
           return Response.json({ error: 'Walk snippet not found' }, { status: 404, headers: corsHeaders });
         }
