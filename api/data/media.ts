@@ -9,9 +9,11 @@ export const STORY_COVER_IMAGES: Record<string, string> = {
   'yueyang-tower': '/images/yueyang-tower.jpg',
 };
 
-/** 旅伴头像：public/images/avatars/ 下本地 PNG/JPEG，按 companion id 映射（MVP 两位） */
+/** 旅伴头像：public/images/avatars/（MVP 两位，改图后递增 AVATAR_ASSET_VERSION） */
+export const AVATAR_ASSET_VERSION = 2;
+
 export const COMPANION_AVATARS: Record<string, string> = {
-  'su-dongpo': '/images/avatars/su-dongpo.jpeg',
+  'su-dongpo': '/images/avatars/su-dongpo.png',
   'sharp-elder': '/images/avatars/sharp-elder.png',
 };
 
@@ -37,7 +39,8 @@ export function getStoryCoverImage(storyId: string, fallback?: string): string {
 }
 
 export function getCompanionAvatar(companionId: string, _fallback?: string): string {
-  return COMPANION_AVATARS[companionId] || DEFAULT_AVATAR;
+  const path = COMPANION_AVATARS[companionId] || DEFAULT_AVATAR;
+  return `${path}?v=${AVATAR_ASSET_VERSION}`;
 }
 
 /** 边走边听入场视频（public/videos/） */

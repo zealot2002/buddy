@@ -1,25 +1,41 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface WalkIntroVideoProps {
   src: string;
   onComplete: () => void;
 }
 
+function logVideoError(video: HTMLVideoElement) {
+  const err = video.error;
+  console.error('joyjoy walk intro video error:', {
+    src: video.currentSrc || video.src,
+    code: err?.code,
+    message: err?.message,
+  });
+}
+
 /** 边走边听全屏入场视频；播完或失败时回调 onComplete */
 export function WalkIntroVideo({ src, onComplete }: WalkIntroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
 
-  const finish = () => {
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const finish = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
-    onComplete();
-  };
+    onCompleteRef.current();
+  }, []);
 
   useEffect(() => {
     completedRef.current = false;
     const video = videoRef.current;
     if (!video) return undefined;
+
+    video.load();
 
     const tryPlay = () => {
       video.play().catch((error) => {
@@ -28,16 +44,18 @@ export function WalkIntroVideo({ src, onComplete }: WalkIntroVideoProps) {
       });
     };
 
-    if (video.readyState >= 2) {
-      tryPlay();
-    } else {
-      video.addEventListener('loadeddata', tryPlay, { once: true });
-    }
+    const onCanPlay = () => tryPlay();
+
+    video.addEventListener('canplay', onCanPlay, { once: true });
+    video.addEventListener('error', () => {
+      logVideoError(video);
+      finish();
+    }, { once: true });
 
     return () => {
-      video.removeEventListener('loadeddata', tryPlay);
+      video.removeEventListener('canplay', onCanPlay);
     };
-  }, [src]);
+  }, [src, finish]);
 
   return (
     <div
@@ -50,11 +68,8 @@ export function WalkIntroVideo({ src, onComplete }: WalkIntroVideoProps) {
         className="h-full w-full object-cover"
         playsInline
         preload="auto"
+        controls={false}
         onEnded={finish}
-        onError={() => {
-          console.error('joyjoy walk intro video error');
-          finish();
-        }}
       />
     </div>
   );

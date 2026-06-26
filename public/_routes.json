@@ -1,7 +1,7 @@
 {
   "version": 1,
   "include": ["/*"],
-  "exclude": ["/assets/*", "/favicon.svg"],
+  "exclude": ["/assets/*", "/favicon.svg", "/images/*", "/videos/*"],
   "error_pages": {
     "404": "/index.html"
   }
