@@ -129,11 +129,12 @@ export function useWalkGeofence({
   useEffect(() => {
     if (!enabled) return undefined;
 
-    triggeredRef.current = new Set();
-    metasRef.current = [];
-    autoTriggerGateRef.current = null;
-
-    checkGeofences(lat, lng);
+    if (!simulationMode) {
+      triggeredRef.current = new Set();
+      metasRef.current = [];
+      autoTriggerGateRef.current = null;
+      checkGeofences(lat, lng);
+    }
 
     if (simulationMode || !navigator.geolocation) return undefined;
 

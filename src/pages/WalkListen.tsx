@@ -25,10 +25,11 @@ interface WalkNearbyStatus {
 }
 
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
+const WALK_NARRATOR_IDS = ['su-dongpo', 'sharp-elder'] as const;
 
 export const WalkListen = () => {
   const { companions } = useCompanions();
-  const { defaultCompanionId } = usePreferencesStore();
+  const { defaultCompanionId, setDefaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
   const { playWalk } = usePlayerStore();
   const { messages, addMessage, hideThreadChildren } = useWalkChatStore();
@@ -41,6 +42,7 @@ export const WalkListen = () => {
   const [simPointId, setSimPointId] = useState(GONG_WANG_FU_WALK_POINTS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
   const threadsRef = useRef<Record<string, { snippetId: string; companionId: string }>>({});
+  const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
 
   const simPoint = useMemo(
     () => GONG_WANG_FU_WALK_POINTS.find((point) => point.id === simPointId) ?? GONG_WANG_FU_WALK_POINTS[0],
@@ -66,17 +68,21 @@ export const WalkListen = () => {
   }, []);
 
   const companion = companions.find((item) => item.id === companionId) ?? companions[0];
+  const walkCompanions = companions.filter((item) =>
+    WALK_NARRATOR_IDS.includes(item.id as (typeof WALK_NARRATOR_IDS)[number]),
+  );
+  const pickerCompanions = walkCompanions.length ? walkCompanions : companions;
+
+  const applyCompanion = useCallback(
+    (nextCompanionId: string) => {
+      setCompanionId(nextCompanionId);
+      setDefaultCompanionId(nextCompanionId);
+    },
+    [setDefaultCompanionId],
+  );
 
   useEffect(() => {
-    setCompanionId(defaultCompanionId);
-  }, [defaultCompanionId]);
-
-  useEffect(() => {
-    if (SIMULATION_ENABLED) {
-      setLocation(simPoint.lat, simPoint.lng, simPoint.label);
-      refreshAreaStatus(simPoint.lat, simPoint.lng);
-      return;
-    }
+    if (SIMULATION_ENABLED) return;
 
     if (!navigator.geolocation) {
       setError('当前设备不支持定位');
@@ -100,7 +106,7 @@ export const WalkListen = () => {
         timeout: WALK_LISTEN_CONFIG.geolocation.timeoutMs,
       },
     );
-  }, [setLocation, setLocating, setError, refreshAreaStatus, simPoint]);
+  }, [setLocation, setLocating, setError, refreshAreaStatus]);
 
   useEffect(() => {
     if (SIMULATION_ENABLED || !navigator.geolocation) return undefined;
@@ -127,9 +133,8 @@ export const WalkListen = () => {
   }, [setLocation, refreshAreaStatus]);
 
   useEffect(() => {
-    if (!isLocating) {
-      refreshAreaStatus(lat, lng);
-    }
+    if (SIMULATION_ENABLED || isLocating) return;
+    refreshAreaStatus(lat, lng);
   }, [lat, lng, isLocating, refreshAreaStatus]);
 
   useEffect(() => {
@@ -140,19 +145,20 @@ export const WalkListen = () => {
     (
       payload: WalkPlayPayload,
       meta: { threadId?: string; layer?: WalkChatMessage['layer']; branch?: WalkChatBranch; source?: WalkChatMessage['source'] },
+      voiceCompanionId?: string,
     ) => {
+      const narratorId = voiceCompanionId ?? payload.companionId;
       addMessage({
         role: 'companion',
         content: payload.content,
         source: meta.source ?? 'geofence',
         snippetId: payload.snippetId,
-        companionId: payload.companionId,
+        companionId: narratorId,
         threadId: meta.threadId,
         layer: meta.layer ?? payload.layer ?? 'L1',
         branch: meta.branch ?? payload.branch,
       });
-      playWalk(payload, payload.companionId, true);
-      setCompanionId(payload.companionId);
+      playWalk(payload, narratorId, true);
     },
     [addMessage, playWalk],
   );
@@ -161,19 +167,29 @@ export const WalkListen = () => {
     (payload: WalkPlayPayload) => {
       if (!SIMULATION_ENABLED && !hasAreaContent) return;
 
+      const now = Date.now();
+      if (
+        lastL1TriggerRef.current?.snippetId === payload.snippetId
+        && now - lastL1TriggerRef.current.at < 1500
+      ) {
+        return;
+      }
+      lastL1TriggerRef.current = { snippetId: payload.snippetId, at: now };
+
       const threadId = `thread-${payload.snippetId}-${Date.now()}`;
       threadsRef.current[threadId] = {
         snippetId: payload.snippetId,
         companionId: payload.companionId,
       };
 
+      applyCompanion(payload.companionId);
       appendCompanionLine(payload, {
         threadId,
         layer: 'L1',
         source: 'geofence',
       });
     },
-    [appendCompanionLine, hasAreaContent],
+    [appendCompanionLine, applyCompanion, hasAreaContent],
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
@@ -194,17 +210,21 @@ export const WalkListen = () => {
 
     setIsFetching(true);
     try {
-      const payload = await fetchWalkPlay(thread.snippetId, thread.companionId, {
+      const payload = await fetchWalkPlay(thread.snippetId, companionId, {
         layer,
         branch,
         trigger: 'tap',
       });
-      appendCompanionLine(payload, {
-        threadId,
-        layer,
-        branch: layer === 'L2' ? branch : undefined,
-        source: layer === 'L3' ? 'deep' : branch === 'B' ? 'branch' : 'expand',
-      });
+      appendCompanionLine(
+        payload,
+        {
+          threadId,
+          layer,
+          branch: layer === 'L2' ? branch : undefined,
+          source: layer === 'L3' ? 'deep' : branch === 'B' ? 'branch' : 'expand',
+        },
+        companionId,
+      );
     } catch (error) {
       console.error('joyjoy walk expand failed:', error);
     } finally {
@@ -222,6 +242,7 @@ export const WalkListen = () => {
 
     setSimPointId(pointId);
     setLocation(point.lat, point.lng, point.label);
+    applyCompanion(point.primaryCompanionId);
     setHasAreaContent(true);
     setNearestFence({
       id: point.id,
@@ -231,6 +252,7 @@ export const WalkListen = () => {
       radius: WALK_LISTEN_CONFIG.fence.byAreaTag['gong-wang-fu'] ?? 30,
     });
     resetSession();
+    lastL1TriggerRef.current = null;
     await triggerPoint(pointId, point.lat, point.lng);
   };
 
@@ -354,13 +376,13 @@ export const WalkListen = () => {
           <div className="relative flex max-w-[52%] shrink-0 flex-col items-end gap-1.5">
             {showCompanionPicker && (
               <div className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,280px)] rounded-xl border border-black/5 bg-white p-3 shadow-lg">
-                <div className="grid grid-cols-4 gap-2">
-                  {companions.map((item) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {pickerCompanions.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => {
-                        setCompanionId(item.id);
+                        applyCompanion(item.id);
                         setShowCompanionPicker(false);
                       }}
                       className={cn(
@@ -429,15 +451,6 @@ export const WalkListen = () => {
                 />
               </button>
             </div>
-
-            {hasAreaContent && (nearestFence?.label || simPoint.label) && (
-              <div className="flex max-w-full items-center gap-1.5 rounded-full border border-black/5 bg-white px-2.5 py-1">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-                <span className="truncate text-[11px] text-gray-500">
-                  {nearestFence?.label ?? simPoint.label}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
