@@ -7,6 +7,13 @@
     "client:dev": "vite",
     "build": "npm run sync:functions-data && tsc -b && vite build",
     "sync:functions-data": "tsx scripts/sync-functions-data.ts",
+    "db:migrate:local": "tsx scripts/d1-migrate-local.ts",
+    "db:seed:local": "tsx scripts/seed-walk-d1.ts",
+    "db:export-sql": "tsx scripts/export-d1-seed-sql.ts",
+    "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
+    "db:migrate:remote": "wrangler d1 migrations apply buddy-walk --remote",
+    "db:seed:remote": "wrangler d1 execute buddy-walk --remote --file=scripts/d1-seed-remote.sql",
+    "db:setup:remote": "npm run db:migrate:remote && npm run db:seed:remote",
     "geocode:fences": "tsx scripts/geocode-walk-fences.ts",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -15,6 +22,7 @@
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
   },
   "dependencies": {
+    "better-sqlite3": "^11.10.0",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -29,6 +37,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^22.15.30",
@@ -50,6 +59,7 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.20.0"
   }
 }

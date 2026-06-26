@@ -1,6 +1,18 @@
 # 同游 - 沉浸式讲解 App 原型
 
-一款让用户在旅途中一键召唤 AI 旅伴讲故事的沉浸式讲解应用。
+一款以**同游（边走边听）**为核心的沉浸式 AI 旅伴应用；MVP 聚焦恭王府动线与苏东坡 / 毒舌老炮双旅伴。
+
+---
+
+## 🧭 产品导航（MVP）
+
+| Tab | 路径 | 说明 |
+|-----|------|------|
+| **同游** | `/walk`（默认首页） | 恭王府模拟游览、围栏触发、聊天式讲解 |
+| **城市故事** | `/discover` | 浏览 / 搜索城市故事，可切换旅伴听不同版本 |
+| **我的** | `/profile` | 默认旅伴、收藏、设置 |
+
+`/` 自动重定向至 `/walk`。
 
 ---
 
@@ -19,28 +31,34 @@
 
 ## ✨ 已实现功能
 
-### 1. 首页 (`/`)
+### 1. 同游 · 边走边听 (`/walk`) — MVP 核心
 
 | 功能模块 | 说明 |
 |---------|------|
-| 一键播放 | 用户到达景点后，直接点击"一键播放"即可收听附近故事 |
-| 位置服务 | 自动获取当前位置，推荐附近的故事点 |
-| 附近故事 | 横向滚动展示附近的故事卡片 |
-| 热门故事 | 双列网格展示所有故事 |
-| 浏览故事入口 | 点击进入故事列表页 |
-| 个性化推荐 | 推荐卡片区域，引导用户开启推荐 |
+| 出场视频 | `WalkIntroVideo` 组件、`walk-intro-played`（24h/旅伴）、`public/videos/` 资源已就绪（**WalkListen 待挂载**） |
+| 模拟游览 | 恭王府 12 站点条，MVP 不依赖现场 GPS |
+| 围栏触发 | 进入围栏随机播一个**未播**段子的第一幕 |
+| 多段子列表 | 同一围栏每个段子各占聊天列表一行（`addMessage`） |
+| 卡片续读 | 同一段子内「继续说 / 上一幕」切换 1～3 幕（`updateMessage`，不增行） |
+| 段子去重 | 已播段子 localStorage 持久化，API `exclude` 参数排除 |
+| 旅伴 | 使用「我的」页 **默认旅伴**（本页不可切换）；TTS 走 ElevenLabs |
+| 首屏提示 | 进入聊天页后悬浮显示「我的页可改默认旅伴」，渐隐消失（不占布局） |
 
-### 2. 故事列表页 (`/stories`)
+> 设计目标、阶段规划、语料格式、状态机详见 **[docs/walk-listen-architecture.md](docs/walk-listen-architecture.md)**。
+
+### 2. 城市故事 (`/discover`)
 
 | 功能模块 | 说明 |
 |---------|------|
-| 搜索功能 | 支持搜索故事标题和描述 |
-| 标签过滤 | 根据故事标签（历史、文化、建筑、传说等）进行筛选 |
-| 双列卡片布局 | 展示所有故事，支持紧凑模式 |
-| 空状态处理 | 无匹配结果时显示友好提示 |
-| 加载状态 | 骨架屏加载动画 |
+| 故事浏览 | 双列卡片展示城市故事 |
+| 搜索 / 标签 | 按标题、描述搜索；按标签筛选 |
+| 连播入口 | 跳转连播编排页（`/playlist`） |
 
-### 3. 故事播放页 (`/story/:id`)
+### 3. 故事列表页 (`/stories`)
+
+Legacy 路由，功能与 Discover 类似，保留兼容。
+
+### 4. 故事播放页 (`/story/:id`)
 
 | 功能模块 | 说明 |
 |---------|------|
@@ -54,7 +72,7 @@
 | 迷你播放器 | 播放时底部显示迷你播放器 |
 | 附近推荐 | 展示附近更多故事 |
 
-### 4. 旅伴选择列表页 (`/companions`)
+### 5. 旅伴选择列表页 (`/companions`)
 
 | 功能模块 | 说明 |
 |---------|------|
@@ -64,7 +82,7 @@
 | 点击卡片 | 返回故事播放页并切换旅伴 |
 | 旅伴说明 | 底部说明卡片，解释旅伴选择的意义 |
 
-### 5. 地图选址页 (`/map`)
+### 6. 地图选址页 (`/map`)
 
 | 功能模块 | 说明 |
 |---------|------|
@@ -74,33 +92,21 @@
 | 附近故事点 | 展示最近的故事点列表 |
 | 选点功能 | 点击地图选择位置 |
 
-### 6. 我的页面 (`/profile`)
+### 7. 我的页面 (`/profile`)
 
 | 功能模块 | 说明 |
 |---------|------|
-| 用户信息 | 头像、昵称展示 |
-| 收藏统计 | 收藏故事、收藏旅伴数量 |
+| **默认旅伴** | 苏东坡 / 毒舌老炮二选一；**边走边听始终使用此项** |
+| 我的收藏 | 收藏故事、旅伴统计（收藏仅限城市故事） |
 | 功能菜单 | 我的旅伴、收藏故事、设置、帮助与反馈 |
-| 关于应用 | 版本信息展示 |
+| 关于应用 | 版本与产品介绍 |
 
-### 7. 收藏页面 (`/favorites`)
+### 8. 收藏页面 (`/favorites`)
 
 | 功能模块 | 说明 |
 |---------|------|
 | 收藏故事列表 | 展示用户收藏的故事 |
 | 收藏旅伴列表 | 展示用户收藏的旅伴 |
-
-### 6. 边走边听 (`/walk`)
-
-| 功能模块 | 说明 |
-|---------|------|
-| 模拟游览 | 恭王府 12 站点条，MVP 不依赖现场 GPS |
-| 围栏触发 | 进入围栏随机播一个段子的第一幕 |
-| 多段子列表 | 同一围栏每个段子各占聊天列表一行（`addMessage`） |
-| 卡片续读 | 同一段子内「继续说 / 上一幕」切换 1～3 幕（`updateMessage`，不增行） |
-| 旅伴 | 使用「我的」页设置的默认旅伴（本页不可切换） |
-
-> 设计目标、阶段规划、架构约定、语料格式、段子去重与状态机详见 **[docs/walk-listen-architecture.md](docs/walk-listen-architecture.md)**（§0 设计目标与规划思路）。
 
 ---
 
@@ -139,11 +145,14 @@
 │   │   ├── gong-wang-fu.json     # 恭王府语料（景区→围栏→段子→幕）
 │   │   ├── walk-areas.ts         # 加载景区 JSON
 │   │   ├── walk-snippets.ts      # 围栏索引与 play 解析
-│   │   ├── stories.ts            # 故事数据（含4个故事）
-│   │   └── companions.ts         # 旅伴数据（MVP：苏东坡、毒舌老炮）
+│   │   ├── media.ts              # 封面 / 头像 / 出场视频路径
+│   │   ├── tts-synthesize.ts     # ElevenLabs 合成
+│   │   ├── stories.ts            # 城市故事数据
+│   │   └── companions.ts         # 旅伴（MVP 两位）
 │   ├── config/                   # 运营策略（单一数据源）
 │   │   ├── walk-config.ts        # 围栏半径、触发冷却、模拟开关
-│   │   └── speech-config.ts      # TTS 时长估算
+│   │   ├── speech-config.ts      # TTS 时长估算
+│   │   └── tts-config.ts         # ElevenLabs voice / model
 │   ├── routes/                   # API 路由
 │   │   ├── stories.ts            # 故事 API
 │   │   ├── companions.ts         # 旅伴 API
@@ -153,39 +162,51 @@
 │   └── worker.ts                 # Cloudflare Worker（备用）
 ├── functions/                    # Cloudflare Pages Functions
 │   └── api/[[path]].js           # API 入口（处理所有 /api/* 请求）
-├── public/                       # 静态资源
-│   ├── _routes.json              # Cloudflare 路由配置（SPA 回退 + 静态资源排除）
-│   ├── _headers                  # HTTP 安全头配置
-│   └── favicon.svg               # 网站图标
+├── public/                       # 静态资源（构建时复制到 dist）
+│   ├── _routes.json              # Cloudflare 路由（含 /images、/videos 排除）
+│   ├── _headers                  # 静态资源缓存头
+│   ├── images/
+│   │   ├── avatars/              # 旅伴头像
+│   │   └── covers/               # 故事封面
+│   ├── videos/                   # 边走边听出场视频（.mp4）
+│   └── favicon.svg
+├── scripts/
+│   ├── sync-functions-data.ts    # 同步 API 数据至 Functions
+│   └── geocode-walk-fences.ts    # 恭王府围栏坐标工具
 ├── src/                          # 前端代码
-│   ├── components/               # 通用组件
-│   │   ├── Header.tsx            # 顶部导航栏
-│   │   ├── BottomNav.tsx         # 底部导航栏（首页、我的）
-│   │   ├── StoryCard.tsx         # 故事卡片组件
-│   │   └── Empty.tsx             # 空状态组件
-│   ├── hooks/                    # 自定义 Hooks
-│   │   ├── useApi.ts             # API 请求封装
-│   │   └── useTheme.ts           # 主题 Hook
-│   ├── lib/                      # 工具函数
-│   │   └── utils.ts              # 通用工具函数
-│   ├── pages/                    # 页面组件
-│   │   ├── WalkListen.tsx        # 边走边听页
-│   │   ├── Home.tsx              # 首页
-│   │   ├── StoriesPage.tsx       # 故事列表页
-│   │   ├── StoryPlayer.tsx       # 故事播放页
-│   │   ├── Companions.tsx        # 旅伴选择页
-│   │   ├── MapPage.tsx           # 地图选址页
-│   │   ├── Profile.tsx           # 我的页面
-│   │   └── Favorites.tsx         # 收藏页面
-│   ├── store/                    # Zustand 状态管理
-│   │   ├── player.ts             # 播放器状态（HTML5 Audio）
-│   │   ├── location.ts           # 定位状态
-│   │   └── favorites.ts          # 收藏状态
+│   ├── components/
+│   │   ├── Header.tsx            # 顶部栏（城市故事页）
+│   │   ├── BottomNav.tsx         # 底部 Tab：城市故事 / 同游 / 我的
+│   │   ├── WalkIntroVideo.tsx    # 边走边听出场视频（全屏）
+│   │   ├── StoryCard.tsx
+│   │   └── Empty.tsx
+│   ├── hooks/
+│   │   ├── useApi.ts
+│   │   ├── useWalkGeofence.ts    # 围栏检测 / 模拟触发
+│   │   └── useTheme.ts
+│   ├── pages/
+│   │   ├── WalkListen.tsx        # 同游 · 边走边听
+│   │   ├── Discover.tsx          # 城市故事
+│   │   ├── Profile.tsx           # 我的（含默认旅伴）
+│   │   ├── StoryPlayer.tsx
+│   │   ├── Companions.tsx
+│   │   ├── Favorites.tsx
+│   │   ├── StoriesPage.tsx       # Legacy 故事列表
+│   │   └── PlaylistPage.tsx      # 连播
+│   ├── store/
+│   │   ├── player.ts             # 播放器（walk 模式传 companionId）
+│   │   ├── preferences.ts        # defaultCompanionId
+│   │   ├── walk-chat.ts
+│   │   ├── walk-played-jokes.ts  # 段子去重
+│   │   ├── walk-intro-played.ts  # 出场视频 24h 限播
+│   │   ├── location.ts
+│   │   └── favorites.ts
 │   ├── App.tsx                   # 应用入口（路由配置）
 │   ├── main.tsx                  # React 渲染入口
 │   └── index.css                 # 全局样式（TailwindCSS）
 ├── docs/
-│   └── walk-listen-architecture.md  # 边走边听架构与状态机
+│   └── walk-listen-architecture.md
+├── .env.example                  # ELEVENLABS_API_KEY 示例
 ├── wrangler.toml                 # Cloudflare 部署配置
 ├── vite.config.ts                # Vite 配置
 ├── tailwind.config.js            # TailwindCSS 配置
@@ -200,32 +221,22 @@
 ## 🔄 核心交互流程
 
 ```
-首页
-  ├── 点击"一键播放" → 故事播放页（自动播放附近故事）
-  ├── 点击"浏览故事" → 故事列表页
-  ├── 点击"查看全部"（附近/热门）→ 故事列表页
-  └── 点击故事卡片 → 故事播放页
+打开应用 (/) → 重定向 /walk（同游 Tab）
 
-故事播放页
-  ├── 点击"更多旅伴" → 旅伴选择列表页
-  ├── 点击旅伴头像（快速切换）→ 切换当前旅伴
-  ├── 点击"收藏" → 收藏/取消收藏故事
-  └── 点击"返回" → 首页
+同游 /walk
+  ├── （计划）出场视频 → 聊天页 + 恭王府模拟站点条
+  ├── 进围栏 → 新段子卡片 + ElevenLabs TTS 第一幕
+  ├── 卡片内「继续说 / 上一幕」→ 同卡片换幕（不增行）
+  └── 首屏悬浮提示「我的页可改默认旅伴」（渐隐）
 
-旅伴选择列表页
-  ├── 点击卡片 → 返回故事播放页（切换旅伴）
-  ├── 点击"听TA讲故事" → 返回故事播放页（切换旅伴）
-  └── 点击心形图标 → 收藏/取消收藏旅伴
+城市故事 /discover
+  ├── 搜索 / 标签筛选 → 故事播放页
+  └── 播放页可切换旅伴（不同 narrator 版本）
 
-地图选址页
-  ├── 点击热门城市 → 切换城市
-  ├── 搜索城市 → 定位到目标城市
-  └── 点击故事点 → 进入故事播放页
-
-我的页面
-  ├── 点击"收藏故事" → 收藏页面（故事列表）
-  ├── 点击"我的旅伴" → 旅伴选择页
-  └── 点击"设置/帮助" → 对应功能页面
+我的 /profile
+  ├── 设置默认旅伴（影响边走边听，本页不可在 /walk 切换）
+  ├── 收藏故事 / 旅伴
+  └── 功能菜单 → companions / favorites / settings
 ```
 
 ---
@@ -282,6 +293,32 @@ npm run build
 npm run preview
 ```
 
+### 数据同步
+
+```bash
+npm run sync:functions-data   # stories / companions / 配置 → functions（walk 语料已迁 D1）
+```
+
+### 边走边听 D1 数据库
+
+```bash
+# 本地（Express dev）
+npm run db:setup:local
+
+# Cloudflare 生产（首次需 wrangler d1 create buddy-walk 并更新 wrangler.toml database_id）
+npm run db:migrate:remote
+npm run db:export-sql && npm run db:seed:remote
+```
+
+语料种子源仍为 `api/data/gong-wang-fu.json`（`byCompanion` 结构）；改 JSON 后 `--force` 重 seed。
+
+### 本地调试（边走边听）
+
+```js
+localStorage.removeItem('joyjoy-walk-played-jokes')   // 重置已播段子
+localStorage.removeItem('joyjoy-walk-intro-played')   // 重置出场视频 24h 限播
+```
+
 ### 类型检查
 
 ```bash
@@ -319,7 +356,7 @@ npm run lint
 {
   "version": 1,
   "include": ["/*"],
-  "exclude": ["/assets/*", "/favicon.svg"],
+  "exclude": ["/assets/*", "/favicon.svg", "/images/*", "/videos/*"],
   "error_pages": {
     "404": "/index.html"
   }
@@ -327,8 +364,16 @@ npm run lint
 ```
 
 - `/api/*` 由 `functions/api/[[path]].js` 处理，**不要**放入 `exclude`
-- 仅排除静态资源路径，避免不必要的 Function 调用
+- `/images/*`、`/videos/*` 排除后可走 CDN 直出，减少 Function 调用
 - 非 API 路由 404 时回退到 `index.html`，支持 React Router 客户端路由
+
+**静态资源**
+
+| 类型 | 路径 | 维护 |
+|------|------|------|
+| 旅伴头像 | `public/images/avatars/` | 改图后递增 `api/data/media.ts` → `AVATAR_ASSET_VERSION` |
+| 出场视频 | `public/videos/{companionId}.mp4` | 勿只改 `dist/`；需 commit 并重新部署 |
+| 故事封面 | `public/images/covers/` | `media.ts` 中 `STORY_COVER_IMAGES` 映射 |
 
 ### 部署配置文件
 
@@ -344,8 +389,12 @@ npm run lint
 | `/api/stories` | GET | 获取所有故事 |
 | `/api/stories/:id` | GET | 获取单个故事 |
 | `/api/stories/nearby` | GET | 获取附近故事 |
-| `/api/companions` | GET | 获取所有旅伴 |
+| `/api/companions` | GET | 获取旅伴列表（MVP：苏东坡、毒舌老炮） |
 | `/api/companions/:id` | GET | 获取单个旅伴 |
+| `/api/config/walk` | GET | 边走边听运营配置（围栏半径、模拟开关等） |
+| `/api/walk/areas` | GET | 景区列表 |
+| `/api/walk/areas/:areaId/fences` | GET | 某景区围栏列表 |
+| `/api/walk/play` | GET | 解析播放（`areaId`, `fenceId`, `companionId`, `jokeId`, `actIndex`, `exclude`） |
 | `/api/routes` | GET | 获取所有路线 |
 | `/api/routes/:id` | GET | 获取单个路线 |
 | `/api/tts` | GET | 语音合成（`?text=&companionId=&lang=`，ElevenLabs） |
@@ -649,7 +698,10 @@ interface WalkAct {
 | 地图瓦片加载失败 | OpenStreetMap 瓦片加载被拦截 | 切换到 CartoCDN / Yandex 地图服务 |
 | 故事无法播放 | Web Speech API 兼容性问题 | 使用 HTML5 Audio 播放 TTS 音频文件 |
 | 进度显示错误 | 进度单位不一致（百分比 vs 秒） | 统一进度管理为百分比 |
-| Cloudflare 部署后 API 返回 HTML | `_routes.json` 将 `/api/*` 误放入 `exclude`，Functions 未执行，404 回退到 `index.html` | 从 `exclude` 中移除 `/api/*`，仅排除 `/assets/*` 等静态资源 |
+| Cloudflare 部署后 API 返回 HTML | `_routes.json` 将 `/api/*` 误放入 `exclude` | 从 `exclude` 移除 `/api/*` |
+| 出场视频 / 头像 404 | 只改了 `dist/` 或未提交 `public/` | 资源放 `public/videos`、`public/images`，重新 build 部署 |
+| TTS 0 秒或失败 | 未配置 `ELEVENLABS_API_KEY` 或 voice 无效 | 配置环境变量，检查 `api/config/tts-config.ts` |
+| 头像更新仍显示旧图 | 浏览器/CDN 缓存 | 递增 `AVATAR_ASSET_VERSION` 并部署 |
 | 分类过滤错误 | Story 类型缺少 `category` 字段 | 使用 `tags` 字段进行过滤 |
 
 ---
@@ -662,7 +714,8 @@ interface WalkAct {
 | v1.1.0 | - | 新增：故事列表页、地图选址页 |
 | v1.2.0 | - | 优化：底部导航改为首页/我的、旅伴卡片优化 |
 | v1.3.0 | - | 部署：Cloudflare Pages 部署配置完成 |
-| v1.4.0 | 2026-06 | 修复：Cloudflare `_routes.json` 配置、播放器重构、文档完善 |
+| v1.4.0 | 2026-06 | Cloudflare `_routes.json`、播放器重构 |
+| v1.5.0 | 2026-06 | MVP：恭王府边走边听、双旅伴、出场视频、ElevenLabs TTS、Discover 导航重构 |
 
 ---
 

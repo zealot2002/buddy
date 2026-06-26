@@ -1,4 +1,4 @@
-/** 景区 → 围栏 → 段子 → 幕 */
+/** 景区 → 围栏 → 旅伴 → 段子 → 幕 */
 
 export interface WalkAct {
   versionId: string;
@@ -12,6 +12,10 @@ export interface WalkJoke {
   acts: WalkAct[];
 }
 
+export interface WalkCompanionJokes {
+  jokes: WalkJoke[];
+}
+
 export interface WalkFenceLocation {
   lat: number;
   lng: number;
@@ -22,9 +26,9 @@ export interface WalkFence {
   id: string;
   label: string;
   triggerHint?: string;
-  primaryCompanionId: string;
   location: WalkFenceLocation;
-  jokes: WalkJoke[];
+  /** 每位旅伴在该围栏下的段子池（MVP：su-dongpo / sharp-elder） */
+  byCompanion: Record<string, WalkCompanionJokes>;
 }
 
 export interface WalkAreaSimulation {

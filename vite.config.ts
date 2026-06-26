@@ -20,18 +20,15 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.log('proxy error', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
-          });
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-          });
+        // 前端会直接 import ../api/data/*.ts；带扩展名的请求交给 Vite，勿转发 Express
+        bypass(req) {
+          const pathname = req.url?.split('?')[0] ?? '';
+          if (/\.(ts|tsx|js|mjs|json|css)(\?|$)/.test(pathname)) {
+            return pathname;
+          }
+          return null;
         },
-      }
-    }
-  }
+      },
+    },
+  },
 })

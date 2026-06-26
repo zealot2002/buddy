@@ -121,7 +121,7 @@ export function useWalkGeofence({
       }
 
       const { meta } = candidates[0];
-      const excludeJokeIds = useWalkPlayedJokesStore.getState().getPlayedJokeIds(meta.id);
+      const excludeJokeIds = useWalkPlayedJokesStore.getState().getPlayedJokeIds(meta.id, companionId);
 
       try {
         const payload = await fetchWalkPlay(meta.id, companionId, {

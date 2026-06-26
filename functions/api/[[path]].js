@@ -1,6 +1,13 @@
 import data from './stories-data.json';
+import {
+  findActiveFence,
+  getNearbyWalkMetas,
+  getNearbyWalkStatus,
+  resolveWalkAutoPlay,
+  resolveWalkPlay,
+} from './walk-db.js';
 
-const { stories, companions, walkSnippets = [], walkOffsiteChatter = {}, appConfig = {} } = data;
+const { stories, companions, walkOffsiteChatter = {}, appConfig = {} } = data;
 
 const speechConfig = appConfig.speech || { minDurationSeconds: 45, charsPerSecond: 4.5 };
 const walkConfig = appConfig.walk || { nearby: { limit: 20 } };
@@ -92,73 +99,11 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
 
 function normalizeCompanionId(companionId) {
   const aliases = { 'sarcastic-guy': 'sharp-elder' };
-  return aliases[companionId] || companionId;
+  return aliases[companionId] || companionId || 'su-dongpo';
 }
 
 function pickRandomVariant(variants) {
   return variants[Math.floor(Math.random() * variants.length)];
-}
-
-function pickRandomJoke(fence, excludeJokeIds = []) {
-  if (!fence?.jokes?.length) return null;
-  const exclude = new Set(excludeJokeIds);
-  const pool = fence.jokes.filter((joke) => !exclude.has(joke.id));
-  if (!pool.length) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function resolveWalkPlay(fenceId, companionId, options = {}) {
-  const fence = walkSnippets.find((item) => item.id === fenceId);
-  if (!fence?.jokes?.length) return null;
-
-  const trigger = options.trigger || 'auto';
-  const normalizedId = normalizeCompanionId(companionId || fence.primaryCompanionId || 'su-dongpo');
-  const excludeJokeIds = options.excludeJokeIds || [];
-
-  let joke;
-  if (options.jokeId) {
-    joke = fence.jokes.find((item) => item.id === options.jokeId);
-  } else if (
-    options.randomJoke !== false
-    && (options.actIndex == null || options.actIndex === 0)
-  ) {
-    joke = pickRandomJoke(fence, excludeJokeIds);
-  } else {
-    joke = fence.jokes[0];
-  }
-  if (!joke?.acts?.length) return null;
-
-  const actIndex = Math.min(
-    Math.max(options.actIndex ?? 0, 0),
-    joke.acts.length - 1,
-  );
-  const act = joke.acts[actIndex];
-  if (!act?.content) return null;
-
-  return {
-    snippetId: fenceId,
-    companionId: normalizedId,
-    versionId: act.versionId,
-    content: act.content,
-    styleNote: '',
-    duration: estimateSpeechDuration(act.content),
-    triggerType: options.trigger ?? (actIndex === 0 ? 'auto' : 'tap'),
-    jokeId: joke.id,
-    jokeLabel: joke.label,
-    actIndex,
-    actCount: joke.acts.length,
-    actLabel: act.label,
-    fenceLabel: fence.label,
-  };
-}
-
-function resolveWalkAutoPlay(fenceId, companionId, excludeJokeIds = []) {
-  return resolveWalkPlay(fenceId, companionId, {
-    randomJoke: true,
-    actIndex: 0,
-    trigger: 'auto',
-    excludeJokeIds,
-  });
 }
 
 function resolveOffsiteChatter(companionId) {
@@ -178,36 +123,11 @@ function resolveOffsiteChatter(companionId) {
   };
 }
 
-function getNearbyWalkMetas(lat, lng, limit = walkConfig.nearby?.limit ?? 20) {
-  return walkSnippets
-    .map((snippet) => {
-      const distanceMeters = Math.round(
-        haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
-      );
-      const inside = distanceMeters <= snippet.location.radiusMeters;
-      return {
-        id: snippet.id,
-        label: snippet.label,
-        lat: snippet.location.lat,
-        lng: snippet.location.lng,
-        radius: snippet.location.radiusMeters,
-        primaryCompanionId: snippet.primaryCompanionId,
-        distanceMeters,
-        inside,
-      };
-    })
-    .sort((a, b) => a.distanceMeters - b.distanceMeters)
-    .slice(0, limit);
-}
-
-function findActiveSnippet(lat, lng) {
-  return walkSnippets
-    .map((snippet) => ({
-      snippet,
-      distance: haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
-    }))
-    .filter(({ snippet, distance }) => distance <= snippet.location.radiusMeters)
-    .sort((a, b) => a.distance - b.distance)[0]?.snippet;
+function walkDbErrorResponse() {
+  return Response.json(
+    { error: 'walk_db_not_configured', hint: 'Bind D1 (DB) and run db:seed:remote' },
+    { status: 503, headers: corsHeaders },
+  );
 }
 
 function findStory(id) {
@@ -237,24 +157,25 @@ export async function onRequest(context) {
   }
 
   if (path.startsWith('/api/walk')) {
+    const db = context.env?.DB;
+    if (!db) {
+      return walkDbErrorResponse();
+    }
+
+    const speechConfig = appConfig.speech || { minDurationSeconds: 45, charsPerSecond: 4.5 };
+    const nearbyLimit = walkConfig.nearby?.limit ?? 20;
+
     if (method === 'GET') {
       if (path === '/api/walk/nearby') {
         const lat = parseFloat(url.searchParams.get('lat') || '39.9163');
         const lng = parseFloat(url.searchParams.get('lng') || '116.3972');
         const verbose = url.searchParams.get('verbose') === '1';
-        const items = getNearbyWalkMetas(lat, lng);
         if (verbose) {
+          const items = await getNearbyWalkStatus(db, lat, lng, nearbyLimit);
           return Response.json(items, { headers: corsHeaders });
         }
-        return Response.json(
-          items.map(({ id, lat: snippetLat, lng: snippetLng, radius }) => ({
-            id,
-            lat: snippetLat,
-            lng: snippetLng,
-            radius,
-          })),
-          { headers: corsHeaders },
-        );
+        const items = await getNearbyWalkMetas(db, lat, lng, nearbyLimit);
+        return Response.json(items, { headers: corsHeaders });
       }
 
       if (path === '/api/walk/tap') {
@@ -262,8 +183,8 @@ export async function onRequest(context) {
         const lng = parseFloat(url.searchParams.get('lng') || '116.3972');
         const companionId = normalizeCompanionId(url.searchParams.get('companionId') || 'su-dongpo');
 
-        const activeSnippet = findActiveSnippet(lat, lng);
-        if (!activeSnippet) {
+        const activeFence = await findActiveFence(db, lat, lng);
+        if (!activeFence) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
@@ -272,7 +193,13 @@ export async function onRequest(context) {
           ? excludeRaw.split(',').map((s) => s.trim()).filter(Boolean)
           : [];
 
-        const payload = resolveWalkAutoPlay(activeSnippet.id, activeSnippet.primaryCompanionId, excludeJokeIds);
+        const payload = await resolveWalkAutoPlay(
+          db,
+          activeFence.id,
+          companionId,
+          excludeJokeIds,
+          speechConfig,
+        );
         if (!payload) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
@@ -298,14 +225,20 @@ export async function onRequest(context) {
           ? excludeRaw.split(',').map((s) => s.trim()).filter(Boolean)
           : [];
         const payload = jokeId || actIndex != null || randomJoke === false
-          ? resolveWalkPlay(playMatch[1], companionId, {
-              jokeId,
-              actIndex,
-              randomJoke,
-              excludeJokeIds,
-              trigger,
-            })
-          : resolveWalkAutoPlay(playMatch[1], companionId, excludeJokeIds);
+          ? await resolveWalkPlay(
+              db,
+              playMatch[1],
+              companionId,
+              {
+                jokeId,
+                actIndex,
+                randomJoke,
+                excludeJokeIds,
+                trigger,
+              },
+              speechConfig,
+            )
+          : await resolveWalkAutoPlay(db, playMatch[1], companionId, excludeJokeIds, speechConfig);
         if (!payload) {
           return Response.json({ error: 'Walk snippet not found' }, { status: 404, headers: corsHeaders });
         }

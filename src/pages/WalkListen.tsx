@@ -192,7 +192,7 @@ export const WalkListen = () => {
       lastL1TriggerRef.current = { snippetId: payload.snippetId, at: now };
 
       if (payload.jokeId && (payload.actIndex ?? 0) === 0) {
-        markJokePlayed(payload.snippetId, payload.jokeId);
+        markJokePlayed(payload.snippetId, defaultCompanionId, payload.jokeId);
       }
       addMessage({
         role: 'companion',

@@ -15,7 +15,7 @@
 | 恭王府 12 站语料密度足够支撑一次完整游览 | 每站 2 段子 × 1～3 幕 |
 | 产品形态值得继续投入运营与真 GPS | **先模拟围栏**，内容迭代稳定后再标定 WGS84 |
 
-**MVP 范围：** 单景区（恭王府）、模拟选站、本地 JSON 语料、无运营后台。
+**MVP 范围：** 单景区（恭王府）、**双旅伴**（苏东坡 / 毒舌老炮）、模拟选站、localStorage 去重、ElevenLabs 实时 TTS。
 
 ### 0.2 核心产品戒律（不可妥协）
 
@@ -37,7 +37,7 @@
 **好处：**
 
 - 运营按「站 × 段子 × 幕」写稿，与动线一一对应。
-- 随机池在 `fence.jokes[]` 上，无需改代码即可增删段子。
+- 随机池在 `fence.byCompanion[companionId].jokes[]` 上，每位旅伴独立维护。
 - 一景区一 JSON，新增景区 = 新文件 + 注册，不拆围栏文件。
 
 ### 0.4 阶段规划（Roadmap）
@@ -48,17 +48,18 @@ flowchart LR
   P2 --> P3[Phase 3<br/>运营后台]
   P3 --> P4[Phase 4<br/>多景区与增长]
 
-  P1 --- P1d[恭王府 JSON<br/>模拟选站<br/>localStorage 去重]
+  P1 --- P1d[恭王府 D1<br/>模拟选站<br/>byCompanion 双旅伴]
   P2 --- P2d[关闭 simulation<br/>标定 WGS84<br/>冷却与半径调优]
-  P3 --- P3d[CMS / D1<br/>热更新语料<br/>A/B 文案]
+  P3 --- P3d[CMS CRUD<br/>热更新 D1<br/>A/B 文案]
   P4 --- P4d[多 WalkArea<br/>埋点与分析<br/>个性化推荐]
 ```
 
 | 阶段 | 目标 | 交付物 | 状态 |
 |------|------|--------|------|
-| **Phase 1** | 验证钩子 + 续读 UX | 恭王府语料、WalkListen 页、模拟围栏、段子去重 | **进行中** |
-| **Phase 2** | 现场可用 | `simulation.enabled=false`、JSON 内真实坐标、GPS 抖动与冷却实测 | 未开始 |
-| **Phase 3** | 运营可改稿 | 后台编辑 JSON 字段或 D1，替代手改 + sync | 未开始 |
+| **Phase 1** | 验证钩子 + 续读 UX | 恭王府语料、WalkListen、模拟围栏、段子去重、ElevenLabs TTS、默认旅伴 | **已完成** |
+| **Phase 1.5** | 语料可运营 | D1 schema、seed、walk API 读库 | **已完成** |
+| **Phase 2** | 现场可用 | `simulation.enabled=false`、GPS 实测 | 未开始 |
+| **Phase 3** | 运营可改稿 | 后台 CRUD 写 D1 | 未开始 |
 | **Phase 4** | 规模化 | 多景区注册、埋点（`triggerType` / `jokeId` / `actIndex`）、推荐策略 | 未开始 |
 
 ### 0.5 关键架构决策（Why）
@@ -78,8 +79,9 @@ flowchart LR
 ```
 景区 (WalkArea)          一景区一 JSON 文件
  └── 围栏 (WalkFence)    n 个，有 GPS + 半径
-      └── 段子 (WalkJoke) n 个，进围栏时随机抽 1 个（从未播池）
-           └── 幕 (WalkAct)  1～3 条，用户感兴趣才继续读
+      └── 旅伴 (byCompanion)  每位旅伴独立段子池
+           └── 段子 (WalkJoke) n 个，进围栏时随机抽 1 个（从未播池）
+                └── 幕 (WalkAct)  1～3 条，用户感兴趣才继续读
 ```
 
 | 层级 | 说明 | 触发方式 |
@@ -98,47 +100,32 @@ flowchart LR
 
 ---
 
-## 2. 语料文件约定
+## 2. 语料存储（Cloudflare D1）
 
-### 2.1 文件位置
+### 2.1 架构
 
-| 路径 | 说明 |
-|------|------|
-| `api/data/gong-wang-fu.json` | 恭王府景区语料（当前 MVP） |
-| `api/data/walk-area-types.ts` | TypeScript 类型定义 |
-| `api/data/walk-areas.ts` | 加载 JSON，注册到 `WALK_AREAS` |
-| `api/data/walk-snippets.ts` | 运行时索引、围栏查询、`resolveWalkPlay` |
+| 层级 | 存储 | 说明 |
+|------|------|------|
+| **运行时** | Cloudflare D1（生产）/ `.data/walk.sqlite`（本地 Express） | 围栏、段子、幕的关联查询 |
+| **种子源** | `api/data/gong-wang-fu.json` | 按 `byCompanion` 组织，导入 D1 后仍可手改 JSON 再 seed |
+| **客户端模拟条** | `walk-areas.ts` 读 JSON 围栏元数据 | 仅 id / label / 坐标，不含段子正文 |
 
-**约定：一景区一 JSON，暂不按围栏拆文件。** 新增景区时：
+**表结构**（见 `migrations/0001_walk_content.sql`）：
 
-1. 新增 `api/data/{area-id}.json`
-2. 在 `walk-areas.ts` 的 `WALK_AREAS` 中注册
-3. 运行 `npm run sync:functions-data`
+```
+walk_areas → walk_fences → walk_jokes (fence_id + companion_id) → walk_acts
+```
 
-### 2.2 JSON Schema（示意）
+### 2.2 JSON 种子 Schema（`byCompanion`）
 
 ```json
 {
-  "id": "gong-wang-fu",
-  "name": "恭王府",
-  "areaTag": "gong-wang-fu",
-  "simulation": {
-    "baseLat": 39.9371,
-    "baseLng": 116.3862,
-    "coordStepLat": 0.00022,
-    "radiusMeters": 30
-  },
-  "fences": [
-    {
-      "id": "gc-05",
-      "label": "蝠池",
-      "triggerHint": "绕过独乐峰，看到形似蝙蝠的水池",
-      "primaryCompanionId": "sharp-elder",
-      "location": {
-        "lat": 39.93798,
-        "lng": 116.3862,
-        "radiusMeters": 30
-      },
+  "id": "gc-05",
+  "label": "蝠池",
+  "triggerHint": "绕过独乐峰，看到形似蝙蝠的水池",
+  "location": { "lat": 39.93798, "lng": 116.3862, "radiusMeters": 30 },
+  "byCompanion": {
+    "sharp-elder": {
       "jokes": [
         {
           "id": "gc-05-main",
@@ -148,40 +135,51 @@ flowchart LR
             { "versionId": "gc-05-l2a", "content": "第二幕…", "label": "水为财" },
             { "versionId": "gc-05-l3", "content": "第三幕…" }
           ]
-        },
-        {
-          "id": "gc-05-alt",
-          "label": "和珅的福字碑",
-          "acts": [
-            { "versionId": "gc-05-l2b", "content": "单幕段子…" }
-          ]
         }
       ]
+    },
+    "su-dongpo": {
+      "jokes": []
     }
-  ]
+  }
 }
 ```
 
-**字段说明**
+| 字段 | 说明 |
+|------|------|
+| `byCompanion.{companionId}.jokes` | 每位旅伴在该围栏的独立段子池 |
+| `jokes[].acts` | 1～3 幕；`actIndex` 从 0 起 |
+| `acts[].versionId` | TTS 缓存键，全局唯一 |
 
-| 字段 | 必填 | 说明 |
-|------|------|------|
-| `fences[].primaryCompanionId` | 是 | 该围栏默认旅伴（如 `sharp-elder` / `su-dongpo`） |
-| `jokes[].acts` | 是 | 长度 1～3；`actIndex` 从 0 起 |
-| `acts[].versionId` | 是 | 内容版本 ID，用于 TTS 缓存键 |
-| `acts[].label` | 否 | 第 2 幕及以后的小标题 |
-| `simulation` | 否 | MVP 模拟游览用，非现场 GPS 标定 |
-
-### 2.3 改文案流程
+### 2.3 本地开发
 
 ```bash
-# 1. 编辑 JSON
+npm run db:setup:local          # 迁移 + 从 JSON seed 到 .data/walk.sqlite
+npm run db:seed:local -- --force  # 强制覆盖本地语料
+npm run geocode:fences -- validate --lat 39.9371 --lng 116.3862
+```
+
+### 2.4 Cloudflare 生产部署
+
+```bash
+# 1. 创建 D1（首次）
+npx wrangler d1 create buddy-walk
+# 将 database_id 写入 wrangler.toml
+
+# 2. 迁移 + 灌数据
+npm run db:migrate:remote
+npm run db:export-sql          # 生成 scripts/d1-seed-remote.sql
+npm run db:seed:remote
+
+# 3. Pages 绑定 D1（wrangler.toml 已配置 binding = "DB"）
+```
+
+改文案流程：
+
+```bash
 vim api/data/gong-wang-fu.json
-
-# 2. 同步到 Cloudflare Functions 静态数据
-npm run sync:functions-data
-
-# 3. 刷新客户端
+npm run db:seed:local -- --force
+npm run db:export-sql && npm run db:seed:remote
 ```
 
 ---
@@ -397,6 +395,24 @@ JSON 内 `location.radiusMeters` 可与配置一致；运行时以语料内为�
 
 公式：`duration = max(minDurationSeconds, ceil(字数 / charsPerSecond))`
 
+### 5.6 ElevenLabs TTS（`tts-config`）
+
+| 项 | 说明 |
+|----|------|
+| 配置 | `api/config/tts-config.ts` — model、voice 参数；`voiceId` 来自 `companions.ts` |
+| 合成 | `api/data/tts-synthesize.ts` → `GET/POST /api/tts` |
+| 密钥 | 环境变量 `ELEVENLABS_API_KEY`（本地 `.env`，CF `wrangler secret`） |
+| 客户端 | `player.playWalk` 传 `companionId`，请求 `/api/tts?text=...` |
+| 降级 | ElevenLabs 失败时可降级 Google TTS（见 `tts-synthesize.ts`） |
+
+### 5.7 静态资源（`media.ts`）
+
+| 资源 | 路径 | 说明 |
+|------|------|------|
+| 旅伴头像 | `public/images/avatars/` | `getCompanionAvatar` 带 `?v=AVATAR_ASSET_VERSION` 破缓存 |
+| 出场视频 | `public/videos/su-dongpo.mp4`、`sharp-elder.mp4` | `getWalkIntroVideo(companionId)` |
+| Cloudflare | `public/_routes.json` exclude `/images/*`、`/videos/*` | 静态直出，勿 exclude `/api/*` |
+
 ---
 
 ## 6. 状态机
@@ -437,6 +453,8 @@ stateDiagram-v2
 2. `fenceId ∉ triggeredRef`（或模拟 `forcePointId` 强制重触发）
 3. `skipAutoTriggerCooldown` **或** `canAutoTriggerWalk(...) === true`
 
+> **真 GPS 注意：** 模拟模式下 `triggeredRef` 在切换模拟站点时按站清除；真实 GPS 路径下坐标更新可能重置会话 ref，与「同会话每站只自动触发一次」的预期需在 Phase 2 对齐实测。
+
 ### 6.2 段子卡片状态机（单条 `WalkChatMessage`）
 
 每张卡片独立；`actCount` 来自服务端。
@@ -467,17 +485,21 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-  [*] --> NoContent: hasAreaContent=false
-  NoContent --> InFence: nearby 有 inside 围栏 / 模拟选站
-  InFence --> Playing: onTrigger 新段子 addMessage + TTS + markPlayed
-  Playing --> InFence: 播放结束（无自动后继）
-  InFence --> InFence: 用户「继续说」（同段子卡片内切幕，不增行）
-  InFence --> Playing: 同围栏再次触发另一未播段子 → 再 addMessage
-  InFence --> NoContent: 离开所有围栏（真实 GPS 模式）
-  InFence --> InFence: 段子池空，自动触发静默
+  [*] --> IntroPending: shouldPlayIntro(companionId)
+  IntroPending --> IntroPlaying: 有视频 src
+  IntroPending --> ChatReady: 24h 内已播 / 无视频
+  IntroPlaying --> ChatReady: onComplete / 播放失败
+  ChatReady --> InFence: nearby 有 inside / 模拟选站
+  InFence --> Playing: onTrigger → addMessage + TTS + markPlayed
+  Playing --> InFence: 播放结束
+  InFence --> InFence: 用户「继续说」（updateMessage，不增行）
+  InFence --> Playing: 同围栏另一未播段子 → addMessage
+  ChatReady --> ChatReady: 首屏 companionHint 渐隐（2.8s 显示 + 0.7s 淡出）
 ```
 
-**旅伴头像**
+> **接入状态：** `WalkIntroVideo`、`walk-intro-played`（`joyjoy-walk-intro-played`）、`media.getWalkIntroVideo` 已就绪；**`WalkListen` 尚未挂载出场视频**，当前进入即 `ChatReady`。首屏「我的页可改默认旅伴」提示已实现。
+
+**旅伴策略**
 
 - 边走边听**不支持页内切换旅伴**；始终使用「我的」页 `defaultCompanionId`（TTS 音色与头像）。
 - 围栏 JSON 内 `primaryCompanionId` 仅作语料/运营标注，运行时不再覆盖用户默认旅伴。
@@ -490,8 +512,20 @@ stateDiagram-v2
 | `walk` | 边走边听 TTS |
 | `city` / `playlist` | 故事播放 |
 
-`playWalk(payload, companionId)` → 请求 `/api/tts?text=...`，HTML5 Audio 播放。  
+`playWalk(payload, companionId)` → 请求 `/api/tts?text=...&companionId=...`，HTML5 Audio 播放。  
 walk 模式下新触发会 `interrupt=true` 打断当前条。
+
+### 6.5 出场视频（待接入 WalkListen）
+
+| 模块 | 路径 | 职责 |
+|------|------|------|
+| 组件 | `src/components/WalkIntroVideo.tsx` | 全屏 `video`，`onEnded` / 错误时 `onComplete` |
+| 限播 | `src/store/walk-intro-played.ts` | 每旅伴 24h 内 `shouldPlayIntro` → false |
+| 路径 | `api/data/media.ts` → `WALK_INTRO_VIDEOS` | `/videos/su-dongpo.mp4`、`sharp-elder.mp4` |
+
+**预期流程：** 进入 `/walk` → 若 `shouldPlayIntro(defaultCompanionId)` → 播视频 → `markIntroPlayed` → 进入聊天 UI。
+
+**调试：** `localStorage.removeItem('joyjoy-walk-intro-played')` 重置限播。
 
 ---
 
@@ -499,19 +533,30 @@ walk 模式下新触发会 `interrupt=true` 打断当前条。
 
 | 模块 | 路径 |
 |------|------|
-| 语料 JSON | `api/data/gong-wang-fu.json` |
+| 语料 JSON | `api/data/gong-wang-fu.json`（种子源） |
+| D1 迁移 | `migrations/0001_walk_content.sql` |
+| D1 查询 | `functions/api/walk-db.js` |
+| Express 适配 | `api/data/walk-service.ts` + `api/db/local-walk-db.ts` |
+| Seed | `scripts/seed-walk-d1.ts`、`scripts/export-d1-seed-sql.ts` |
 | 类型 | `api/data/walk-area-types.ts` |
-| 加载 / 注册 | `api/data/walk-areas.ts` |
-| 围栏索引 & resolve | `api/data/walk-snippets.ts` |
+| 客户端围栏列表 | `api/data/walk-areas.ts` |
+| 地理计算 | `api/data/walk-snippets.ts`（haversine） |
+| 静态资源映射 | `api/data/media.ts` |
 | 运营配置 | `api/config/walk-config.ts` |
 | 时长估算 | `api/config/speech-config.ts` |
-| API 路由 | `api/routes/walk.ts` |
+| TTS 配置 | `api/config/tts-config.ts` |
+| TTS 合成 | `api/data/tts-synthesize.ts` |
+| API 路由 | `api/routes/walk.ts`、`api/routes/tts.ts` |
 | 生产 API | `functions/api/[[path]].js` |
 | 围栏 Hook | `src/hooks/useWalkGeofence.ts` |
 | 聊天 UI | `src/pages/WalkListen.tsx` |
+| 出场视频 UI | `src/components/WalkIntroVideo.tsx`（待挂载） |
 | 消息 store | `src/store/walk-chat.ts` |
-| **已播段子 store** | `src/store/walk-played-jokes.ts` |
+| 已播段子 store | `src/store/walk-played-jokes.ts` |
+| 出场限播 store | `src/store/walk-intro-played.ts` |
+| 默认旅伴 | `src/store/preferences.ts` |
 | 播放器 | `src/store/player.ts` |
+| 路由 | `src/App.tsx`（`/` → `/walk`，Tab：`/discover` `/walk` `/profile`） |
 | 同步脚本 | `scripts/sync-functions-data.ts` |
 
 ---
@@ -527,7 +572,9 @@ walk 模式下新触发会 `interrupt=true` 打断当前条。
 | 埋点 | `triggerType`、`jokeId`、`actIndex`、exclude 池大小 | Phase 4 |
 | 多景区 | 注册多个 `WalkArea`，路由与 UI 选景区 | Phase 4 |
 
-**已实现（勿重复开发）：** 段子去重（localStorage + `exclude` API）、卡片内切幕、模拟围栏、JSON 语料层级。
+**已实现：** 段子去重、卡片内切幕、模拟围栏、**D1 语料**、ElevenLabs TTS、默认旅伴、`byCompanion` 双旅伴段子池。
+
+**待完成（Phase 1 收尾）：** WalkListen 挂载出场视频；真 GPS 下 `triggeredRef` 与文档「同会话每站一次」对齐（见 §6.1 注）。
 
 ---
 

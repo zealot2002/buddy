@@ -14,15 +14,16 @@ alwaysApply: false
 |------|------|
 | `walk-config.ts` | 围栏半径、主动触发冷却/位移、定位参数、nearby 上限、模拟开关 |
 | `speech-config.ts` | TTS 时长估算 |
+| `tts-config.ts` | ElevenLabs model、voice 参数（不含 API Key） |
 | `index.ts` | `APP_CONFIG` 聚合导出 |
 
-边走边听语料在 `api/data/*.json`（如 `gong-wang-fu.json`），结构见 `docs/walk-listen-architecture.md`。
+边走边听语料在 **Cloudflare D1**（表结构见 `migrations/0001_walk_content.sql`）；种子源 `api/data/gong-wang-fu.json`。
 
 ## 修改流程
 
 1. 只改 `api/config/*.ts` 中的常量
-2. 运行 `npm run sync:functions-data` 同步至 `functions/api/stories-data.json`
-3. 客户端/服务端通过 import 或 `GET /api/config/walk` 读取
+2. 改 walk 语料：编辑 JSON → `npm run db:seed:local -- --force` → 生产 `npm run db:export-sql && npm run db:seed:remote`
+3. 改 stories/companions：运行 `npm run sync:functions-data`
 
 ## 后续运营端
 

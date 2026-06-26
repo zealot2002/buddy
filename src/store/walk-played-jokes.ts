@@ -1,44 +1,67 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-/** 按围栏记录已播放过的段子 id（localStorage 持久化，同一段子不重复自动触发） */
+function fenceCompanionKey(fenceId: string, companionId: string): string {
+  return `${fenceId}:${companionId}`;
+}
+
+/** 按围栏 + 旅伴记录已播放过的段子 id（同旅伴同段子不重复自动触发） */
 interface WalkPlayedJokesState {
-  byFence: Record<string, string[]>;
-  getPlayedJokeIds: (fenceId: string) => string[];
-  hasPlayed: (fenceId: string, jokeId: string) => boolean;
-  markPlayed: (fenceId: string, jokeId: string) => void;
-  isFenceExhausted: (fenceId: string, totalJokeCount: number) => boolean;
-  clearFence: (fenceId: string) => void;
+  byFenceCompanion: Record<string, string[]>;
+  getPlayedJokeIds: (fenceId: string, companionId: string) => string[];
+  hasPlayed: (fenceId: string, companionId: string, jokeId: string) => boolean;
+  markPlayed: (fenceId: string, companionId: string, jokeId: string) => void;
+  isFenceExhausted: (fenceId: string, companionId: string, totalJokeCount: number) => boolean;
+  clearFence: (fenceId: string, companionId: string) => void;
   clearAll: () => void;
 }
 
 export const useWalkPlayedJokesStore = create<WalkPlayedJokesState>()(
   persist(
     (set, get) => ({
-      byFence: {},
-      getPlayedJokeIds: (fenceId) => get().byFence[fenceId] ?? [],
-      hasPlayed: (fenceId, jokeId) => get().byFence[fenceId]?.includes(jokeId) ?? false,
-      markPlayed: (fenceId, jokeId) =>
+      byFenceCompanion: {},
+      getPlayedJokeIds: (fenceId, companionId) =>
+        get().byFenceCompanion[fenceCompanionKey(fenceId, companionId)] ?? [],
+      hasPlayed: (fenceId, companionId, jokeId) =>
+        get().byFenceCompanion[fenceCompanionKey(fenceId, companionId)]?.includes(jokeId) ?? false,
+      markPlayed: (fenceId, companionId, jokeId) =>
         set((state) => {
-          const prev = state.byFence[fenceId] ?? [];
+          const key = fenceCompanionKey(fenceId, companionId);
+          const prev = state.byFenceCompanion[key] ?? [];
           if (prev.includes(jokeId)) return state;
           return {
-            byFence: {
-              ...state.byFence,
-              [fenceId]: [...prev, jokeId],
+            byFenceCompanion: {
+              ...state.byFenceCompanion,
+              [key]: [...prev, jokeId],
             },
           };
         }),
-      isFenceExhausted: (fenceId, totalJokeCount) =>
-        (get().byFence[fenceId]?.length ?? 0) >= totalJokeCount,
-      clearFence: (fenceId) =>
+      isFenceExhausted: (fenceId, companionId, totalJokeCount) =>
+        (get().byFenceCompanion[fenceCompanionKey(fenceId, companionId)]?.length ?? 0) >= totalJokeCount,
+      clearFence: (fenceId, companionId) =>
         set((state) => {
-          const next = { ...state.byFence };
-          delete next[fenceId];
-          return { byFence: next };
+          const key = fenceCompanionKey(fenceId, companionId);
+          const next = { ...state.byFenceCompanion };
+          delete next[key];
+          return { byFenceCompanion: next };
         }),
-      clearAll: () => set({ byFence: {} }),
+      clearAll: () => set({ byFenceCompanion: {} }),
     }),
-    { name: 'joyjoy-walk-played-jokes' },
+    {
+      name: 'joyjoy-walk-played-jokes',
+      version: 1,
+      migrate: (persisted) => {
+        const state = persisted as { byFence?: Record<string, string[]>; byFenceCompanion?: Record<string, string[]> };
+        if (state.byFenceCompanion) return persisted;
+        const byFenceCompanion: Record<string, string[]> = {};
+        if (state.byFence) {
+          for (const [fenceId, jokeIds] of Object.entries(state.byFence)) {
+            byFenceCompanion[`${fenceId}:su-dongpo`] = jokeIds;
+            byFenceCompanion[`${fenceId}:sharp-elder`] = [...jokeIds];
+          }
+        }
+        return { ...state, byFenceCompanion, byFence: undefined };
+      },
+    },
   ),
 );

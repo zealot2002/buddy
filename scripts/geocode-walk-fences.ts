@@ -8,7 +8,8 @@
  */
 import { toWgs84, type CoordSystem } from '../api/data/coord-utils.js';
 import { GONG_WANG_FU_AREA, GONG_WANG_FU_FENCES } from '../api/data/walk-areas.js';
-import { getNearbyWalkStatus, haversineMeters } from '../api/data/walk-snippets.js';
+import { haversineMeters } from '../api/data/walk-snippets.js';
+import { walkGetNearbyStatus } from '../api/data/walk-service.js';
 
 function parseArgs(argv: string[]) {
   const args = argv.slice(2);
@@ -54,7 +55,7 @@ function cmdConvert(flags: Record<string, string>) {
   console.log('WGS84（写入围栏 JSON）:', { lat: wgsLat, lng: wgsLng });
 }
 
-function cmdValidate(flags: Record<string, string>) {
+async function cmdValidate(flags: Record<string, string>) {
   const lat = parseFloat(flags.lat ?? '');
   const lng = parseFloat(flags.lng ?? '');
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -69,7 +70,7 @@ function cmdValidate(flags: Record<string, string>) {
   }
   console.log('');
 
-  const nearby = getNearbyWalkStatus(lat, lng, 20);
+  const nearby = await walkGetNearbyStatus(lat, lng, 20);
   for (const item of nearby) {
     const tag = item.inside ? '✓ 围栏内' : '  围栏外';
     console.log(
@@ -100,16 +101,21 @@ function cmdList() {
 
 const { command, flags } = parseArgs(process.argv);
 
-switch (command) {
-  case 'convert':
-    cmdConvert(flags);
-    break;
-  case 'validate':
-    cmdValidate(flags);
-    break;
-  case 'list':
-    cmdList();
-    break;
-  default:
-    printHelp();
-}
+(async () => {
+  switch (command) {
+    case 'convert':
+      cmdConvert(flags);
+      break;
+    case 'validate':
+      await cmdValidate(flags);
+      break;
+    case 'list':
+      cmdList();
+      break;
+    default:
+      printHelp();
+  }
+})().catch((error) => {
+  console.error('joyjoy geocode failed:', error);
+  process.exit(1);
+});
