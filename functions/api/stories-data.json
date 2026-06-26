@@ -11,7 +11,7 @@
       "distance": 120,
       "duration": 180,
       "description": "断桥不断，肝肠寸断。白娘子与许仙的爱情故事，从这里开始流传千年。",
-      "coverImage": "/images/west-lake-bridge.jpg",
+      "coverImage": "/images/covers/west-lake-bridge.png",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "爱情",
@@ -44,7 +44,7 @@
       "distance": 850,
       "duration": 180,
       "description": "走进紫禁城，在朱墙黄瓦间聆听六百年的人间冷暖与皇家往事。",
-      "coverImage": "/images/forbidden-city-hall.jpg",
+      "coverImage": "/images/covers/forbidden-city-hall.png",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "历史",
@@ -77,7 +77,7 @@
       "distance": 2300,
       "duration": 200,
       "description": "江南园林艺术的巅峰之作，一步一景，处处皆画。",
-      "coverImage": "/images/suzhou-garden.jpg",
+      "coverImage": "/images/covers/suzhou-garden.png",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "园林",
@@ -110,7 +110,7 @@
       "distance": 5400,
       "duration": 260,
       "description": "千古一帝秦始皇的地下军团，沉睡千年后重见天日。",
-      "coverImage": "/images/terracotta-army.jpg",
+      "coverImage": "/images/covers/terracotta-army.png",
       "defaultCompanionId": "sharp-elder",
       "tags": [
         "历史",
@@ -143,7 +143,7 @@
       "distance": 1500,
       "duration": 180,
       "description": "昆明湖畔，长廊画舫，在湖光山色间感受皇家园林的借景之美与时代往事。",
-      "coverImage": "/images/summer-palace.jpg",
+      "coverImage": "/images/covers/summer-palace.png",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "皇家",
@@ -176,7 +176,7 @@
       "distance": 8900,
       "duration": 220,
       "description": "范仲淹《岳阳楼记》的诞生地，\"先天下之忧而忧\"的情怀在此传颂。",
-      "coverImage": "/images/yueyang-tower.jpg",
+      "coverImage": "/images/covers/yueyang-tower.png",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "诗词",
