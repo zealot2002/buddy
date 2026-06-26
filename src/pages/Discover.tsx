@@ -33,7 +33,6 @@ export const Discover = () => {
 
       <PageContent>
         <div className="mb-5">
-          <h1 className="font-serif text-xl sm:text-2xl font-bold text-light-blue mb-1">发现</h1>
           <p className="text-sm text-gray-500 mb-3">城市故事，随时随地可听</p>
 
           <div className="relative mb-3">
