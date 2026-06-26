@@ -55,26 +55,14 @@ export const stories: Story[] = [
     duration: 180,
     description: '断桥不断，肝肠寸断。白娘子与许仙的爱情故事，从这里开始流传千年。',
     coverImage: STORY_COVER_IMAGES['west-lake-bridge'],
-    defaultCompanionId: 'lin-huiyin',
+    defaultCompanionId: 'su-dongpo',
     tags: ['爱情', '传说', '西湖'],
     narrators: [
-      {
-        companionId: 'lin-huiyin',
-        duration: 180,
-        content: '各位朋友，欢迎来到西湖断桥。站在这座桥上，我仿佛能感受到白娘子与许仙初次相遇时的心跳。你看这烟雨朦胧中的桥身，正如他们的爱情一样，若隐若现，如梦似幻...',
-        styleNote: '温婉细腻，侧重情感与美学',
-      },
       {
         companionId: 'su-dongpo',
         duration: 200,
         content: '哈哈！各位看官，这断桥可有意思了。断桥不断，肝肠寸断——说的就是白娘子和许仙那档子事。想当年我苏东坡也在西湖边修过苏堤，见过的才子佳人可不少...',
         styleNote: '豪放风趣，穿插诗词典故',
-      },
-      {
-        companionId: 'gentle-lady',
-        duration: 190,
-        content: '亲爱的朋友，慢慢走，别着急。你看这断桥边的柳树，正随风轻轻摆动，像是在诉说着一个古老的故事。白娘子的传说之所以动人，是因为它告诉我们，真爱可以跨越一切...',
-        styleNote: '温柔治愈，娓娓道来',
       },
       {
         companionId: 'sharp-elder',
@@ -112,26 +100,14 @@ export const stories: Story[] = [
     duration: 200,
     description: '江南园林艺术的巅峰之作，一步一景，处处皆画。',
     coverImage: STORY_COVER_IMAGES['suzhou-garden'],
-    defaultCompanionId: 'lin-huiyin',
+    defaultCompanionId: 'su-dongpo',
     tags: ['园林', '艺术', '江南'],
     narrators: [
-      {
-        companionId: 'lin-huiyin',
-        duration: 200,
-        content: '亲爱的朋友，拙政园是我最爱的园林之一。你看这亭台楼阁，山水相映，处处透着江南文人的雅致情怀。借景、框景、对景——每一种造园手法，都是一首无声的诗...',
-        styleNote: '专业细腻，建筑美学',
-      },
       {
         companionId: 'su-dongpo',
         duration: 220,
         content: '哈哈哈，这拙政园的名字取得有意思！"拙政"二字，出自潘岳的《闲居赋》，意思是说自己笨拙，只会从政。说白了就是当官当腻了，归隐田园...',
         styleNote: '风趣幽默，文人视角',
-      },
-      {
-        companionId: 'gentle-lady',
-        duration: 210,
-        content: '慢慢走，别着急。在拙政园里，时间是用来浪费的。你听这雨声打在芭蕉叶上，滴答滴答，像是大自然在为你演奏一曲轻音乐...',
-        styleNote: '温柔治愈，沉浸式体验',
       },
       {
         companionId: 'sharp-elder',
@@ -168,18 +144,6 @@ export const stories: Story[] = [
         content: '秦王扫六合，虎视何雄哉！想当年秦始皇嬴政，十三岁登基，三十九岁统一六国，这份功业，前无古人后无来者。这兵马俑，就是他千古霸业的见证...',
         styleNote: '豪放大气，帝王功业视角',
       },
-      {
-        companionId: 'lin-huiyin',
-        duration: 250,
-        content: '从艺术史的角度来看，兵马俑是中国古代雕塑艺术的杰作。你看这每一张面孔，都有不同的表情和特征——将军的威严、士兵的坚毅、弓箭手的专注...',
-        styleNote: '艺术审美，细致观察',
-      },
-      {
-        companionId: 'gentle-lady',
-        duration: 240,
-        content: '看着这些沉默了两千多年的士兵，我的心里有种说不出的感动。他们曾经也是有血有肉的年轻人，为了一个帝国的梦想，永远地站在了这里...',
-        styleNote: '温暖共情，人文视角',
-      },
     ],
   },
   {
@@ -194,7 +158,7 @@ export const stories: Story[] = [
     duration: 180,
     description: '昆明湖畔，长廊画舫，在湖光山色间感受皇家园林的借景之美与时代往事。',
     coverImage: STORY_COVER_IMAGES['summer-palace'],
-    defaultCompanionId: 'gentle-lady',
+    defaultCompanionId: 'su-dongpo',
     tags: ['皇家', '园林', '近代史'],
     narrators: summerPalaceCityNarrators,
   },
@@ -220,22 +184,10 @@ export const stories: Story[] = [
         styleNote: '豪放激昂，文人情怀',
       },
       {
-        companionId: 'gentle-lady',
-        duration: 230,
-        content: '站在岳阳楼上，眺望洞庭湖，心中不由得涌起一种开阔的感觉。范仲淹说得真好——不以物喜，不以己悲。这种境界，值得我们每个人去追寻...',
-        styleNote: '温暖治愈，人生感悟',
-      },
-      {
         companionId: 'sharp-elder',
         duration: 210,
         content: '您可别以为范仲淹真的天天在岳阳楼上待着！告诉您，《岳阳楼记》是他看着一幅画写出来的，他本人根本没去过岳阳楼。这就是文人的厉害之处...',
         styleNote: '犀利揭秘，冷知识',
-      },
-      {
-        companionId: 'lin-huiyin',
-        duration: 200,
-        content: '岳阳楼的建筑结构非常有特色。三层飞檐，盔顶造型，是中国古建筑中独一无二的形制。从力学角度来看，这种结构既稳固又美观，堪称建筑史上的奇迹...',
-        styleNote: '专业建筑视角',
       },
     ],
   },
