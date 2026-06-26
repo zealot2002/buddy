@@ -266,24 +266,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   switchCompanion: (companionId) => {
-    const { currentStory, mode, walkContent, walkSnippetId, duration } = get();
-    if (mode === 'walk' && walkContent && walkSnippetId) {
-      startContentAudio(
-        walkContent,
-        companionId,
-        duration,
-        'walk',
-        set,
-        get,
-        {
-          currentStory: null,
-          currentNarrator: null,
-          walkContent,
-          walkSnippetId,
-        },
-      );
-      return;
-    }
+    const { currentStory, mode } = get();
+    if (mode === 'walk') return;
     if (!currentStory) return;
     startStoryAudio(currentStory, companionId, mode, set, get);
   },

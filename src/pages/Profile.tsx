@@ -48,7 +48,7 @@ export const Profile = () => {
             <Users className="w-5 h-5 text-gold shrink-0" />
             默认旅伴
           </h3>
-          <p className="text-xs text-gray-500 mb-3">边走边听页会默认使用此旅伴，可在该页面临时切换</p>
+          <p className="text-xs text-gray-500 mb-3">边走边听将始终使用此旅伴；城市故事可在播放页切换不同版本</p>
           <div className="grid grid-cols-2 gap-2">
             {companions.map((companion) => (
               <button

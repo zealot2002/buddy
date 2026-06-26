@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
 import {
   fetchWalkPlay,
@@ -27,7 +27,6 @@ interface WalkNearbyStatus {
 }
 
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
-const WALK_NARRATOR_IDS = ['su-dongpo', 'sharp-elder'] as const;
 
 function playCardContent(
   playWalk: ReturnType<typeof usePlayerStore.getState>['playWalk'],
@@ -41,14 +40,13 @@ function playCardContent(
 
 export const WalkListen = () => {
   const { companions } = useCompanions();
-  const { defaultCompanionId, setDefaultCompanionId } = usePreferencesStore();
+  const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
   const { playWalk } = usePlayerStore();
   const { messages, addMessage, updateMessage } = useWalkChatStore();
   const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
 
-  const [companionId, setCompanionId] = useState(defaultCompanionId);
-  const [showCompanionPicker, setShowCompanionPicker] = useState(false);
+
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
@@ -80,20 +78,8 @@ export const WalkListen = () => {
     }
   }, []);
 
-  const companion = companions.find((item) => item.id === companionId) ?? companions[0];
-  const walkCompanions = companions.filter((item) =>
-    WALK_NARRATOR_IDS.includes(item.id as (typeof WALK_NARRATOR_IDS)[number]),
-  );
-  const pickerCompanions = walkCompanions.length ? walkCompanions : companions;
+  const companion = companions.find((item) => item.id === defaultCompanionId) ?? companions[0];
   const isFetching = fetchingMessageId !== null;
-
-  const applyCompanion = useCallback(
-    (nextCompanionId: string) => {
-      setCompanionId(nextCompanionId);
-      setDefaultCompanionId(nextCompanionId);
-    },
-    [setDefaultCompanionId],
-  );
 
   useEffect(() => {
     if (SIMULATION_ENABLED) return;
@@ -172,7 +158,6 @@ export const WalkListen = () => {
       }
       lastL1TriggerRef.current = { snippetId: payload.snippetId, at: now };
 
-      applyCompanion(payload.companionId);
       if (payload.jokeId && (payload.actIndex ?? 0) === 0) {
         markJokePlayed(payload.snippetId, payload.jokeId);
       }
@@ -181,7 +166,7 @@ export const WalkListen = () => {
         content: payload.content,
         source: 'geofence',
         snippetId: payload.snippetId,
-        companionId: payload.companionId,
+        companionId: defaultCompanionId,
         jokeId: payload.jokeId,
         jokeLabel: payload.jokeLabel,
         actIndex: payload.actIndex ?? 0,
@@ -189,15 +174,16 @@ export const WalkListen = () => {
         actLabel: payload.actLabel,
         spotLabel: payload.fenceLabel ?? simPoint.label,
       });
-      playWalk(payload, payload.companionId, true);
+      playWalk(payload, defaultCompanionId, true);
     },
-    [addMessage, applyCompanion, hasAreaContent, markJokePlayed, playWalk, simPoint.label],
+    [addMessage, defaultCompanionId, hasAreaContent, markJokePlayed, playWalk, simPoint.label],
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
     enabled: SIMULATION_ENABLED || hasAreaContent,
     lat,
     lng,
+    companionId: defaultCompanionId,
     simulationMode: SIMULATION_ENABLED,
     onTrigger: handleGeofenceTrigger,
   });
@@ -208,7 +194,7 @@ export const WalkListen = () => {
 
       setFetchingMessageId(message.id);
       try {
-        const narratorId = message.companionId ?? companionId;
+        const narratorId = message.companionId ?? defaultCompanionId;
         const payload = await fetchWalkPlay(message.snippetId, narratorId, {
           jokeId: message.jokeId,
           actIndex: nextActIndex,
@@ -237,7 +223,7 @@ export const WalkListen = () => {
         setFetchingMessageId(null);
       }
     },
-    [companionId, fetchingMessageId, playWalk, updateMessage],
+    [defaultCompanionId, fetchingMessageId, playWalk, updateMessage],
   );
 
   const handleContinueStory = (message: WalkChatMessage) => {
@@ -259,7 +245,6 @@ export const WalkListen = () => {
 
     setSimPointId(pointId);
     setLocation(point.location.lat, point.location.lng, point.label);
-    applyCompanion(point.primaryCompanionId);
     setHasAreaContent(true);
     setNearestFence({
       id: point.id,
@@ -377,31 +362,7 @@ export const WalkListen = () => {
             </p>
           </div>
 
-          <div className="relative flex max-w-[52%] shrink-0 flex-col items-end gap-1.5">
-            {showCompanionPicker && (
-              <div className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,280px)] rounded-xl border border-black/5 bg-white p-3 shadow-lg">
-                <div className="grid grid-cols-2 gap-2">
-                  {pickerCompanions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        applyCompanion(item.id);
-                        setShowCompanionPicker(false);
-                      }}
-                      className={cn(
-                        'flex flex-col items-center gap-1 rounded-xl p-2 touch-target',
-                        companionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
-                      )}
-                    >
-                      <img src={getCompanionAvatar(item.id)} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
-                      <span className="w-full truncate text-center text-[10px] text-gray-700">{item.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
+          <div className="flex max-w-[40%] shrink-0 flex-col items-end gap-1">
             <div className="flex items-center gap-2">
               <div className="relative shrink-0">
                 <div
@@ -409,7 +370,7 @@ export const WalkListen = () => {
                   className={cn('block rounded-md', !hasAreaContent && 'opacity-90')}
                 >
                   <img
-                    src={getCompanionAvatar(companionId)}
+                    src={getCompanionAvatar(defaultCompanionId)}
                     alt={companion?.name || '旅伴'}
                     className={cn(
                       'h-10 w-10 rounded-md border-2 bg-white object-cover',
@@ -430,30 +391,14 @@ export const WalkListen = () => {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowCompanionPicker((open) => !open)}
-                className="min-w-0 touch-target text-right"
-              >
+              <div className="min-w-0 text-right">
                 <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
-                {isFetching && (
+                {isFetching ? (
                   <p className="truncate text-[11px] text-gray-500">正在组织语言…</p>
+                ) : (
+                  <p className="truncate text-[11px] text-gray-400">我的页可改默认旅伴</p>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowCompanionPicker((open) => !open)}
-                className="touch-target shrink-0 p-0.5"
-                aria-label="切换旅伴"
-              >
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 text-gray-400 transition-transform',
-                    showCompanionPicker && 'rotate-180',
-                  )}
-                />
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -488,7 +433,7 @@ export const WalkListen = () => {
       >
         {messages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
-          const messageCompanionId = message.companionId ?? companionId;
+          const messageCompanionId = message.companionId ?? defaultCompanionId;
           const actIndex = message.actIndex ?? 0;
           const actCount = message.actCount ?? 1;
           const cardSubtitle = getCardSubtitle(message);

@@ -28,6 +28,7 @@ interface UseWalkGeofenceOptions {
   enabled: boolean;
   lat: number;
   lng: number;
+  companionId: string;
   simulationMode?: boolean;
   onTrigger: (payload: WalkPlayPayload, meta: WalkSnippetMeta) => void;
 }
@@ -70,6 +71,7 @@ export function useWalkGeofence({
   enabled,
   lat,
   lng,
+  companionId,
   simulationMode = WALK_LISTEN_CONFIG.simulation.enabled,
   onTrigger,
 }: UseWalkGeofenceOptions) {
@@ -119,7 +121,6 @@ export function useWalkGeofence({
       }
 
       const { meta } = candidates[0];
-      const companionId = meta.primaryCompanionId || 'su-dongpo';
       const excludeJokeIds = useWalkPlayedJokesStore.getState().getPlayedJokeIds(meta.id);
 
       try {
@@ -144,7 +145,7 @@ export function useWalkGeofence({
         console.error('joyjoy walk play fetch failed:', error);
       }
     },
-    [enabled, simulationMode],
+    [enabled, simulationMode, companionId],
   );
 
   useEffect(() => {
