@@ -24,12 +24,23 @@ interface UseWalkGeofenceOptions {
   enabled: boolean;
   lat: number;
   lng: number;
+  companionId: string;
   simulationMode?: boolean;
   onTrigger: (payload: WalkPlayPayload, meta: WalkSnippetMeta) => void;
 }
 
-async function fetchNearbyMetas(lat: number, lng: number): Promise<WalkSnippetMeta[]> {
-  const res = await fetch(`${API_BASE}/walk/nearby?lat=${lat}&lng=${lng}`);
+function triggerKey(snippetId: string, companionId: string): string {
+  return `${snippetId}:${companionId}`;
+}
+
+async function fetchNearbyMetas(lat: number, lng: number, companionId: string): Promise<WalkSnippetMeta[]> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    companionId,
+    verbose: '1',
+  });
+  const res = await fetch(`${API_BASE}/walk/nearby?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch nearby walk snippets');
   return res.json();
 }
@@ -59,6 +70,7 @@ export function useWalkGeofence({
   enabled,
   lat,
   lng,
+  companionId,
   simulationMode = WALK_LISTEN_CONFIG.simulation.enabled,
   onTrigger,
 }: UseWalkGeofenceOptions) {
@@ -66,18 +78,26 @@ export function useWalkGeofence({
   const metasRef = useRef<WalkSnippetMeta[]>([]);
   const autoTriggerGateRef = useRef<WalkAutoTriggerGate | null>(null);
   const onTriggerRef = useRef(onTrigger);
+  const companionIdRef = useRef(companionId);
 
   useEffect(() => {
     onTriggerRef.current = onTrigger;
   }, [onTrigger]);
 
+  useEffect(() => {
+    companionIdRef.current = companionId;
+    metasRef.current = [];
+  }, [companionId]);
+
   const checkGeofences = useCallback(
     async (currentLat: number, currentLng: number, forcePointId?: string) => {
       if (!enabled) return;
 
+      const activeCompanionId = companionIdRef.current;
+
       if (!metasRef.current.length) {
         try {
-          metasRef.current = await fetchNearbyMetas(currentLat, currentLng);
+          metasRef.current = await fetchNearbyMetas(currentLat, currentLng, activeCompanionId);
         } catch (error) {
           console.error('joyjoy walk nearby fetch failed:', error);
           return;
@@ -90,8 +110,12 @@ export function useWalkGeofence({
           distance: haversineMeters(currentLat, currentLng, meta.lat, meta.lng),
         }))
         .filter(({ meta, distance }) => {
-          if (forcePointId) return meta.id === forcePointId;
-          return distance <= meta.radius && !triggeredRef.current.has(meta.id);
+          if (forcePointId) return meta.id === forcePointId && meta.hasContent !== false;
+          return (
+            distance <= meta.radius
+            && meta.hasContent !== false
+            && !triggeredRef.current.has(triggerKey(meta.id, activeCompanionId))
+          );
         })
         .sort((a, b) => a.distance - b.distance);
 
@@ -108,11 +132,10 @@ export function useWalkGeofence({
       }
 
       const { meta } = candidates[0];
-      const companionId = meta.primaryCompanionId || 'su-dongpo';
 
       try {
-        const payload = await fetchWalkPlay(meta.id, companionId, { layer: 'L1', trigger: 'auto' });
-        triggeredRef.current.add(meta.id);
+        const payload = await fetchWalkPlay(meta.id, activeCompanionId, { layer: 'L1', trigger: 'auto' });
+        triggeredRef.current.add(triggerKey(meta.id, activeCompanionId));
         autoTriggerGateRef.current = {
           at: Date.now(),
           lat: currentLat,
@@ -164,8 +187,9 @@ export function useWalkGeofence({
   }, []);
 
   const triggerPoint = useCallback(
-    async (pointId: string, pointLat: number, pointLng: number) => {
-      triggeredRef.current.delete(pointId);
+    async (pointId: string, pointLat: number, pointLng: number, overrideCompanionId?: string) => {
+      const activeCompanionId = overrideCompanionId ?? companionIdRef.current;
+      triggeredRef.current.delete(triggerKey(pointId, activeCompanionId));
       metasRef.current = [];
       await checkGeofences(pointLat, pointLng, pointId);
     },
@@ -195,16 +219,32 @@ export async function fetchWalkOffsite(companionId: string): Promise<WalkPlayPay
   return res.json();
 }
 
-export async function fetchWalkAreaStatus(lat: number, lng: number): Promise<{
+export async function fetchWalkAreaStatus(
+  lat: number,
+  lng: number,
+  companionId: string,
+): Promise<{
   hasAreaContent: boolean;
   nearest: WalkSnippetMeta & { label?: string; distanceMeters?: number; inside?: boolean };
 }> {
-  const res = await fetch(`${API_BASE}/walk/nearby?lat=${lat}&lng=${lng}&verbose=1`);
+  const res = await fetch(
+    `${API_BASE}/walk/nearby?lat=${lat}&lng=${lng}&companionId=${encodeURIComponent(companionId)}&verbose=1`,
+  );
   if (!res.ok) throw new Error('Failed to fetch walk area status');
-  const items = (await res.json()) as Array<WalkSnippetMeta & { label?: string; distanceMeters: number; inside: boolean }>;
-  const insideFence = items.find((item) => item.inside);
+  const items = (await res.json()) as Array<
+    WalkSnippetMeta & { label?: string; distanceMeters: number; inside: boolean; hasContent?: boolean }
+  >;
+  const insideFence = items.find((item) => item.inside && item.hasContent !== false);
   return {
     hasAreaContent: Boolean(insideFence),
-    nearest: insideFence ?? items[0] ?? { id: '', lat, lng, radius: 0, distanceMeters: 0, inside: false },
+    nearest: insideFence ?? items.find((item) => item.inside) ?? items[0] ?? {
+      id: '',
+      lat,
+      lng,
+      radius: 0,
+      distanceMeters: 0,
+      inside: false,
+      hasContent: false,
+    },
   };
 }

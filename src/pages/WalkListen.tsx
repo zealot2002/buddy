@@ -7,7 +7,12 @@ import {
   type WalkPlayPayload,
 } from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
-import { GONG_WANG_FU_WALK_POINTS } from '../../api/data/gong-wang-fu-walk.js';
+import {
+  GONG_WANG_FU_WALK_POINTS,
+  getWalkTreeForCompanion,
+  pointHasCompanionContent,
+} from '../../api/data/gong-wang-fu-walk.js';
+import { treeToCardLayers } from '../../api/data/walk-snippets.js';
 import { estimateSpeechDuration } from '../../api/data/narrations.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
@@ -33,17 +38,20 @@ interface WalkNearbyStatus {
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
 const WALK_NARRATOR_IDS = ['su-dongpo', 'sharp-elder'] as const;
 
-function buildCardLayers(snippetId: string): WalkCardLayers | null {
-  const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === snippetId);
-  if (!point) return null;
-  return {
-    l1: point.tree.l1.content,
-    l2A: point.tree.l2A.content,
-    l2B: point.tree.l2B.content,
-    l3: point.tree.l3.content,
-    l2ALabel: point.tree.l2A.label,
-    l2BLabel: point.tree.l2B.label,
-  };
+const WALK_COMPANION_LABELS: Record<(typeof WALK_NARRATOR_IDS)[number], string> = {
+  'su-dongpo': '苏东坡',
+  'sharp-elder': '毒舌老炮',
+};
+
+const FALLBACK_WALK_COMPANIONS = WALK_NARRATOR_IDS.map((id) => ({
+  id,
+  name: WALK_COMPANION_LABELS[id],
+}));
+
+function buildCardLayers(snippetId: string, companionId: string): WalkCardLayers | null {
+  const tree = getWalkTreeForCompanion(snippetId, companionId);
+  if (!tree) return null;
+  return treeToCardLayers(tree);
 }
 
 function getActLayer(act: WalkCardAct): WalkChatMessage['layer'] {
@@ -62,17 +70,16 @@ export const WalkListen = () => {
   const { companions } = useCompanions();
   const { defaultCompanionId, setDefaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
-  const { playWalk } = usePlayerStore();
+  const { playWalk, switchCompanion } = usePlayerStore();
   const { messages, addMessage, updateMessage } = useWalkChatStore();
 
-  const [companionId, setCompanionId] = useState(defaultCompanionId);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
   const [simPointId, setSimPointId] = useState(GONG_WANG_FU_WALK_POINTS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
+  const lastL1TriggerRef = useRef<{ snippetId: string; companionId: string; at: number } | null>(null);
   const lastMessageCountRef = useRef(0);
 
   const simPoint = useMemo(
@@ -80,9 +87,14 @@ export const WalkListen = () => {
     [simPointId],
   );
 
-  const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number) => {
+  const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number, companionId?: string) => {
+    const activeCompanionId = companionId ?? usePreferencesStore.getState().defaultCompanionId;
     try {
-      const { hasAreaContent: inside, nearest } = await fetchWalkAreaStatus(currentLat, currentLng);
+      const { hasAreaContent: inside, nearest } = await fetchWalkAreaStatus(
+        currentLat,
+        currentLng,
+        activeCompanionId,
+      );
       setHasAreaContent(inside);
       if (nearest.id) {
         setNearestFence({
@@ -98,19 +110,15 @@ export const WalkListen = () => {
     }
   }, []);
 
-  const companion = companions.find((item) => item.id === companionId) ?? companions[0];
-  const walkCompanions = companions.filter((item) =>
-    WALK_NARRATOR_IDS.includes(item.id as (typeof WALK_NARRATOR_IDS)[number]),
-  );
-  const pickerCompanions = walkCompanions.length ? walkCompanions : companions;
+  const companionName =
+    companions.find((item) => item.id === defaultCompanionId)?.name
+    ?? WALK_COMPANION_LABELS[defaultCompanionId as (typeof WALK_NARRATOR_IDS)[number]]
+    ?? '旅伴';
 
-  const applyCompanion = useCallback(
-    (nextCompanionId: string) => {
-      setCompanionId(nextCompanionId);
-      setDefaultCompanionId(nextCompanionId);
-    },
-    [setDefaultCompanionId],
-  );
+  const pickerCompanions = FALLBACK_WALK_COMPANIONS.map((fallback) => {
+    const fromApi = companions.find((item) => item.id === fallback.id);
+    return fromApi ?? fallback;
+  });
 
   const playCardContent = useCallback(
     (snippetId: string, content: string, narratorId: string) => {
@@ -176,8 +184,8 @@ export const WalkListen = () => {
 
   useEffect(() => {
     if (SIMULATION_ENABLED || isLocating) return;
-    refreshAreaStatus(lat, lng);
-  }, [lat, lng, isLocating, refreshAreaStatus]);
+    refreshAreaStatus(lat, lng, defaultCompanionId);
+  }, [lat, lng, isLocating, defaultCompanionId, refreshAreaStatus]);
 
   useEffect(() => {
     const companionCount = messages.filter((message) => message.role === 'companion').length;
@@ -194,17 +202,21 @@ export const WalkListen = () => {
       const now = Date.now();
       if (
         lastL1TriggerRef.current?.snippetId === payload.snippetId
+        && lastL1TriggerRef.current?.companionId === payload.companionId
         && now - lastL1TriggerRef.current.at < 1500
       ) {
         return;
       }
-      lastL1TriggerRef.current = { snippetId: payload.snippetId, at: now };
+      lastL1TriggerRef.current = {
+        snippetId: payload.snippetId,
+        companionId: payload.companionId,
+        at: now,
+      };
 
-      const layers = buildCardLayers(payload.snippetId);
+      const layers = buildCardLayers(payload.snippetId, payload.companionId);
       if (!layers) return;
 
       const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === payload.snippetId);
-      applyCompanion(payload.companionId);
 
       addMessage({
         role: 'companion',
@@ -221,16 +233,46 @@ export const WalkListen = () => {
 
       playCardContent(payload.snippetId, layers.l1, payload.companionId);
     },
-    [addMessage, applyCompanion, hasAreaContent, playCardContent],
+    [addMessage, hasAreaContent, playCardContent],
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
     enabled: SIMULATION_ENABLED || hasAreaContent,
     lat,
     lng,
+    companionId: defaultCompanionId,
     simulationMode: SIMULATION_ENABLED,
     onTrigger: handleGeofenceTrigger,
   });
+
+  const retriggerCurrentStation = useCallback(
+    async (companionId: string) => {
+      const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === simPointId);
+      if (!point || !pointHasCompanionContent(simPointId, companionId)) {
+        setHasAreaContent(false);
+        return;
+      }
+
+      setHasAreaContent(true);
+      resetSession();
+      lastL1TriggerRef.current = null;
+      await triggerPoint(simPointId, point.lat, point.lng, companionId);
+    },
+    [simPointId, resetSession, triggerPoint],
+  );
+
+  const selectCompanionManually = useCallback(
+    async (nextCompanionId: string) => {
+      setDefaultCompanionId(nextCompanionId);
+      setShowCompanionPicker(false);
+      switchCompanion(nextCompanionId);
+      await refreshAreaStatus(lat, lng, nextCompanionId);
+      if (SIMULATION_ENABLED) {
+        await retriggerCurrentStation(nextCompanionId);
+      }
+    },
+    [setDefaultCompanionId, switchCompanion, refreshAreaStatus, lat, lng, retriggerCurrentStation],
+  );
 
   const handleContinueCard = (message: WalkChatMessage) => {
     if (!message.layers || message.cardAct === undefined || message.cardAct >= 2 || isFetching) return;
@@ -238,7 +280,7 @@ export const WalkListen = () => {
     const nextAct = (message.cardAct + 1) as WalkCardAct;
     const branch = message.branch ?? 'A';
     const content = getActContent(message.layers, nextAct, branch);
-    const narratorId = message.companionId ?? companionId;
+    const narratorId = defaultCompanionId;
 
     updateMessage(message.id, {
       cardAct: nextAct,
@@ -254,7 +296,7 @@ export const WalkListen = () => {
     const prevAct = (message.cardAct - 1) as WalkCardAct;
     const branch = message.branch ?? 'A';
     const content = getActContent(message.layers, prevAct, branch);
-    const narratorId = message.companionId ?? companionId;
+    const narratorId = defaultCompanionId;
 
     updateMessage(message.id, {
       cardAct: prevAct,
@@ -269,7 +311,7 @@ export const WalkListen = () => {
 
     const nextBranch: WalkChatBranch = message.branch === 'B' ? 'A' : 'B';
     const content = getActContent(message.layers, 1, nextBranch);
-    const narratorId = message.companionId ?? companionId;
+    const narratorId = defaultCompanionId;
 
     updateMessage(message.id, {
       branch: nextBranch,
@@ -283,10 +325,12 @@ export const WalkListen = () => {
     const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === pointId);
     if (!point) return;
 
+    const companionId = usePreferencesStore.getState().defaultCompanionId;
+    const hasContent = pointHasCompanionContent(pointId, companionId);
+
     setSimPointId(pointId);
     setLocation(point.lat, point.lng, point.label);
-    applyCompanion(point.primaryCompanionId);
-    setHasAreaContent(true);
+    setHasAreaContent(hasContent);
     setNearestFence({
       id: point.id,
       label: point.label,
@@ -294,9 +338,16 @@ export const WalkListen = () => {
       inside: true,
       radius: WALK_LISTEN_CONFIG.fence.byAreaTag['gong-wang-fu'] ?? 30,
     });
+
+    if (!hasContent) {
+      resetSession();
+      lastL1TriggerRef.current = null;
+      return;
+    }
+
     resetSession();
     lastL1TriggerRef.current = null;
-    await triggerPoint(pointId, point.lat, point.lng);
+    await triggerPoint(pointId, point.lat, point.lng, companionId);
   };
 
   const initialSimTriggeredRef = useRef(false);
@@ -413,13 +464,10 @@ export const WalkListen = () => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => {
-                        applyCompanion(item.id);
-                        setShowCompanionPicker(false);
-                      }}
+                      onClick={() => selectCompanionManually(item.id)}
                       className={cn(
                         'flex flex-col items-center gap-1 rounded-xl p-2 touch-target',
-                        companionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
+                        defaultCompanionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
                       )}
                     >
                       <img src={getCompanionAvatar(item.id)} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
@@ -437,8 +485,8 @@ export const WalkListen = () => {
                   className={cn('block rounded-md', !hasAreaContent && 'opacity-90')}
                 >
                   <img
-                    src={getCompanionAvatar(companionId)}
-                    alt={companion?.name || '旅伴'}
+                    src={getCompanionAvatar(defaultCompanionId)}
+                    alt={companionName}
                     className={cn(
                       'h-10 w-10 rounded-md border-2 bg-white object-cover',
                       hasAreaContent ? 'border-emerald-400' : 'border-transparent',
@@ -463,7 +511,7 @@ export const WalkListen = () => {
                 onClick={() => setShowCompanionPicker((open) => !open)}
                 className="min-w-0 touch-target text-right"
               >
-                <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
+                <p className="truncate text-sm font-medium text-gray-900">{companionName}</p>
                 {isFetching && (
                   <p className="truncate text-[11px] text-gray-500">正在组织语言…</p>
                 )}
@@ -516,7 +564,7 @@ export const WalkListen = () => {
       >
         {messages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
-          const messageCompanionId = message.companionId ?? companionId;
+          const messageCompanionId = defaultCompanionId;
 
           if (message.role === 'system') {
             return (
@@ -535,7 +583,7 @@ export const WalkListen = () => {
             <div key={message.id} className="flex max-w-[88%] items-start gap-2">
               <img
                 src={getCompanionAvatar(messageCompanionId)}
-                alt={companion?.name || '旅伴'}
+                alt={companionName}
                 className="h-9 w-9 shrink-0 rounded-md bg-white object-cover"
               />
               <div className="relative min-w-0 rounded-lg bg-white px-3 py-2.5 shadow-sm before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white before:content-['']">

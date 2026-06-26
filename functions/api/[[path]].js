@@ -65,53 +65,34 @@ function resolveTreeVariant(tree, layer, branch) {
 
 function resolveWalkPlay(snippetId, companionId, options = {}) {
   const snippet = walkSnippets.find((item) => item.id === snippetId);
-  if (!snippet) return null;
+  if (!snippet || !companionId) return null;
 
   const layer = options.layer || 'L1';
   const branch = options.branch || 'A';
   const trigger = options.trigger || (layer === 'L1' ? 'auto' : 'tap');
-  const normalizedId = normalizeCompanionId(companionId || snippet.primaryCompanionId || 'su-dongpo');
+  const normalizedId = normalizeCompanionId(companionId);
+  const tree = snippet.treesByCompanion?.[normalizedId] ?? snippet.tree;
+  if (!tree) return null;
 
-  if (snippet.tree) {
-    const variant = resolveTreeVariant(snippet.tree, layer, branch);
-    if (!variant?.content) return null;
-
-    return {
-      snippetId,
-      companionId: normalizedId,
-      versionId: variant.versionId,
-      content: variant.content,
-      styleNote: variant.styleNote || '',
-      duration: estimateSpeechDuration(variant.content),
-      triggerType: trigger,
-      layer,
-      branch: layer === 'L2' ? branch : undefined,
-      label:
-        layer === 'L2'
-          ? branch === 'B'
-            ? snippet.tree.l2B?.label
-            : snippet.tree.l2A?.label
-          : snippet.label,
-    };
-  }
-
-  const companionScripts = snippet.scripts?.[normalizedId];
-  const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
-  const legacyPool = companionScripts?.variants;
-  const variants = pool?.variants || legacyPool;
-  if (!variants?.length) return null;
-
-  const picked = pickRandomVariant(variants);
-  const duration = estimateSpeechDuration(picked.content);
+  const variant = resolveTreeVariant(tree, layer, branch);
+  if (!variant?.content) return null;
 
   return {
     snippetId,
     companionId: normalizedId,
-    versionId: picked.versionId,
-    content: picked.content,
-    styleNote: picked.styleNote || '',
-    duration,
+    versionId: variant.versionId,
+    content: variant.content,
+    styleNote: variant.styleNote || '',
+    duration: estimateSpeechDuration(variant.content),
     triggerType: trigger,
+    layer,
+    branch: layer === 'L2' ? branch : undefined,
+    label:
+      layer === 'L2'
+        ? branch === 'B'
+          ? tree.l2B?.label
+          : tree.l2A?.label
+        : snippet.label,
   };
 }
 
@@ -132,22 +113,26 @@ function resolveOffsiteChatter(companionId) {
   };
 }
 
-function getNearbyWalkMetas(lat, lng, limit = walkConfig.nearby?.limit ?? 20) {
+function getNearbyWalkMetas(lat, lng, companionId, limit = walkConfig.nearby?.limit ?? 20) {
   return walkSnippets
     .map((snippet) => {
       const distanceMeters = Math.round(
         haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
       );
       const inside = distanceMeters <= snippet.location.radiusMeters;
+      const normalizedId = companionId ? normalizeCompanionId(companionId) : null;
+      const hasContent = normalizedId
+        ? Boolean(snippet.treesByCompanion?.[normalizedId] ?? snippet.tree)
+        : undefined;
       return {
         id: snippet.id,
         label: snippet.label,
         lat: snippet.location.lat,
         lng: snippet.location.lng,
         radius: snippet.location.radiusMeters,
-        primaryCompanionId: snippet.primaryCompanionId,
         distanceMeters,
         inside,
+        hasContent,
       };
     })
     .sort((a, b) => a.distanceMeters - b.distanceMeters)
@@ -193,10 +178,11 @@ export async function onRequest(context) {
   if (path.startsWith('/api/walk')) {
     if (method === 'GET') {
       if (path === '/api/walk/nearby') {
-        const lat = parseFloat(url.searchParams.get('lat') || '39.9163');
-        const lng = parseFloat(url.searchParams.get('lng') || '116.3972');
+        const lat = parseFloat(url.searchParams.get('lat') || '39.9371');
+        const lng = parseFloat(url.searchParams.get('lng') || '116.3862');
+        const companionId = url.searchParams.get('companionId') || undefined;
         const verbose = url.searchParams.get('verbose') === '1';
-        const items = getNearbyWalkMetas(lat, lng);
+        const items = getNearbyWalkMetas(lat, lng, companionId);
         if (verbose) {
           return Response.json(items, { headers: corsHeaders });
         }
@@ -221,7 +207,7 @@ export async function onRequest(context) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
-        const payload = resolveWalkPlay(activeSnippet.id, activeSnippet.primaryCompanionId, {
+        const payload = resolveWalkPlay(activeSnippet.id, companionId, {
           layer: 'L2',
           branch: 'A',
           trigger: 'tap',

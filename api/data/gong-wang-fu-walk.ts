@@ -33,13 +33,24 @@ export interface GongWangFuWalkPoint {
   id: string;
   label: string;
   triggerHint: string;
+  lat: number;
+  lng: number;
+  /** 按旅伴 id 索引，站点本身不绑定旅伴 */
+  treesByCompanion: Partial<Record<'sharp-elder' | 'su-dongpo', WalkTreeContent>>;
+}
+
+/** 录入用中间结构，导出时转为 treesByCompanion */
+interface GongWangFuWalkPointRaw {
+  id: string;
+  label: string;
+  triggerHint: string;
   primaryCompanionId: 'sharp-elder' | 'su-dongpo';
   lat: number;
   lng: number;
   tree: WalkTreeContent;
 }
 
-export const GONG_WANG_FU_WALK_POINTS: GongWangFuWalkPoint[] = [
+const GONG_WANG_FU_RAW: GongWangFuWalkPointRaw[] = [
   {
     id: 'gc-01',
     label: '一宫门外',
@@ -233,6 +244,33 @@ export const GONG_WANG_FU_WALK_POINTS: GongWangFuWalkPoint[] = [
     ),
   },
 ];
+
+export const GONG_WANG_FU_WALK_POINTS: GongWangFuWalkPoint[] = GONG_WANG_FU_RAW.map(
+  ({ id, label, triggerHint, lat, lng, primaryCompanionId, tree }) => ({
+    id,
+    label,
+    triggerHint,
+    lat,
+    lng,
+    treesByCompanion: {
+      [primaryCompanionId]: tree,
+    },
+  }),
+);
+
+export function getWalkTreeForCompanion(
+  pointId: string,
+  companionId: string,
+): WalkTreeContent | undefined {
+  const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === pointId);
+  if (!point) return undefined;
+  const normalized = companionId === 'sarcastic-guy' ? 'sharp-elder' : companionId;
+  return point.treesByCompanion[normalized as 'sharp-elder' | 'su-dongpo'];
+}
+
+export function pointHasCompanionContent(pointId: string, companionId: string): boolean {
+  return Boolean(getWalkTreeForCompanion(pointId, companionId));
+}
 
 export const GONG_WANG_FU_FENCE_LABELS: Record<string, string> = Object.fromEntries(
   GONG_WANG_FU_WALK_POINTS.map((point) => [point.id, point.label]),
