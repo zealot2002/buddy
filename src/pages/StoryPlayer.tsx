@@ -2,37 +2,30 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, Heart, Share2, Volume2, VolumeX,
-  MapPin, Clock, ChevronDown, ChevronUp,
-  User, ChevronRight, Check
+  Clock, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { PageContent, PageShell } from '../components/PageShell';
-import { useStory, useCompanions } from '../hooks/useApi';
+import { useStory } from '../hooks/useApi';
 import { usePlayerStore } from '../store/player';
 import { useFavoritesStore } from '../store/favorites';
-import { StoryCard } from '../components/StoryCard';
-import { getStoryCoverImage, getCompanionAvatar } from '../../api/data/media.js';
-import { uniqueNarratorsByCompanion } from '../../api/data/narration-utils.js';
-import { normalizeCompanionId } from '../../api/data/narrations.js';
+import { getStoryCoverImage } from '../../api/data/media.js';
 
 export const StoryPlayer = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const companionIdFromUrl = searchParams.get('companionId');
   const { story, loading } = useStory(id || '');
-  const { companions } = useCompanions();
   const { 
     currentStory, 
     currentNarrator, 
-    currentCompanionId, 
     isPlaying, 
     progress, 
     duration,
     play, 
     toggle, 
     setProgress, 
-    stop,
-    switchCompanion 
+    stop
   } = usePlayerStore();
   const { isStoryFavorite, addStory, removeStory } = useFavoritesStore();
   const navigate = useNavigate();
@@ -46,12 +39,6 @@ export const StoryPlayer = () => {
       play(story, companionIdFromUrl || undefined);
     }
   }, [story, currentStory, play, companionIdFromUrl]);
-
-  useEffect(() => {
-    if (story && currentStory && companionIdFromUrl && currentCompanionId !== companionIdFromUrl) {
-      switchCompanion(companionIdFromUrl);
-    }
-  }, [story, currentStory, companionIdFromUrl, currentCompanionId, switchCompanion]);
 
   const updateProgressFromClientX = (clientX: number) => {
     if (!progressRef.current) return;
@@ -103,10 +90,6 @@ export const StoryPlayer = () => {
     navigate('/');
   };
 
-  const handleSwitchCompanion = (companionId: string) => {
-    switchCompanion(normalizeCompanionId(companionId));
-  };
-
   if (loading || !story) {
     return (
       <PageShell withBottomNav={false}>
@@ -118,12 +101,10 @@ export const StoryPlayer = () => {
     );
   }
 
-  const companionChoices = uniqueNarratorsByCompanion(story.narrators);
   const isFavorite = isStoryFavorite(story.id);
   const displayDuration = duration || currentNarrator?.duration || story.duration;
   const progressPercent = Math.max(0, Math.min(100, progress));
   const currentTimeSeconds = Math.floor((progressPercent / 100) * displayDuration);
-  const currentCompanion = companions.find((c) => c.id === currentCompanionId);
   const coverSrc = getStoryCoverImage(story.id, story.coverImage);
 
   return (
@@ -235,78 +216,6 @@ export const StoryPlayer = () => {
         </div>
 
         <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-4 sm:mb-6">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-card-border flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <User className="w-5 h-5 text-gold shrink-0" />
-              <span className="font-serif font-semibold text-light-blue">选择旅伴</span>
-            </div>
-            <button 
-              type="button"
-              onClick={() => navigate(`/companions?storyId=${story.id}`)}
-              className="text-sm text-gold active:text-amber transition-colors flex items-center gap-1 shrink-0 touch-target"
-            >
-              更多旅伴
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="p-3 sm:p-4">
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {companionChoices.map((narrator) => {
-                const companion = companions.find(
-                  (c) => normalizeCompanionId(c.id) === narrator.companionId,
-                );
-                const isActive = currentCompanionId === narrator.companionId;
-                
-                return (
-                  <button
-                    key={narrator.companionId}
-                    type="button"
-                    onClick={() => handleSwitchCompanion(narrator.companionId)}
-                    className={`p-2.5 sm:p-3 rounded-xl border transition-all duration-300 text-left min-w-0 ${
-                      isActive 
-                        ? 'border-gold bg-gold/10' 
-                        : 'border-card-border active:border-gold/50 bg-card-bg/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="relative shrink-0">
-                        <img 
-                          src={getCompanionAvatar(companion?.id || '')}
-                          alt={companion?.name}
-                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ${
-                            isActive ? 'ring-2 ring-gold ring-offset-1 sm:ring-offset-2 ring-offset-card-bg' : ''
-                          }`}
-                        />
-                        {isActive && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-gold rounded-full flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-deep-navy" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-light-blue text-xs sm:text-sm truncate">{companion?.name}</p>
-                        <p className="text-[10px] sm:text-xs text-gray-500 truncate">{narrator.styleNote}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-2 text-[10px] sm:text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatTime(narrator.duration)}
-                      </span>
-                      {isActive && (
-                        <span className="px-1.5 sm:px-2 py-0.5 bg-amber/20 text-amber rounded-full shrink-0">
-                          讲解中
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card-bg rounded-2xl border border-card-border overflow-hidden mb-4 sm:mb-6">
           <button 
             type="button"
             onClick={() => setShowContent(!showContent)}
@@ -327,29 +236,6 @@ export const StoryPlayer = () => {
             </div>
           )}
         </div>
-
-        <section className="mb-4">
-          <h3 className="font-serif font-bold text-light-blue mb-3 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-gold shrink-0" />
-            附近更多故事
-          </h3>
-          <div className="horizontal-scroll">
-            {story.id !== 'west-lake-bridge' && 
-              <StoryCard key="west-lake-bridge" story={{
-                id: 'west-lake-bridge',
-                title: '西湖断桥的传说',
-                location: { name: '杭州西湖', lat: 30.2741, lng: 120.1551 },
-                distance: 120,
-                duration: 180,
-                description: '断桥不断，肝肠寸断。白娘子与许仙的爱情故事...',
-                coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=west%20lake%20hangzhou%20broken%20bridge%20chinese%20traditional%20painting%20style%20beautiful%20scenery%20willow%20trees%20misty&image_size=landscape_16_9',
-                defaultCompanionId: 'su-dongpo',
-                tags: ['爱情', '传说', '西湖'],
-                narrators: []
-              }} compact layout="scroll" />}
-          </div>
-        </section>
-
 
       </PageContent>
     </PageShell>
