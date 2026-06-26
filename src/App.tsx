@@ -5,7 +5,6 @@ import { Companions } from "@/pages/Companions";
 import { Favorites } from "@/pages/Favorites";
 import { StoryPlayer } from "@/pages/StoryPlayer";
 import { Profile } from "@/pages/Profile";
-import { MapPage } from "@/pages/MapPage";
 import { StoriesPage } from "@/pages/StoriesPage";
 import { PlaylistPage } from "@/pages/PlaylistPage";
 import { BottomNav } from "@/components/BottomNav";
@@ -28,7 +27,6 @@ const MainApp = () => {
         <Route path="/companions" element={<Companions />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/story/:id" element={<StoryPlayer />} />
-        <Route path="/map" element={<MapPage />} />
       </Routes>
       {showBottomNav && <BottomNav onNavigate={navigate} />}
     </div>

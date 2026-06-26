@@ -22,8 +22,7 @@ export const Header = () => {
         
         <button 
           type="button"
-          onClick={() => navigate('/map')}
-          className="flex items-center gap-1 min-w-0 max-w-[45%] px-2.5 sm:px-3 py-1.5 rounded-full bg-card-bg border border-card-border text-light-blue text-xs sm:text-sm hover:border-gold/50 transition-colors touch-target"
+          className="flex items-center gap-1 min-w-0 max-w-[45%] px-2.5 sm:px-3 py-1.5 rounded-full bg-card-bg border border-card-border text-light-blue text-xs sm:text-sm transition-colors touch-target"
         >
           <MapPin className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gold shrink-0 ${isLocating ? 'animate-pulse' : ''}`} />
           <span className="truncate">{city}</span>
