@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
-import { fetchWalkTap, fetchWalkOffsite, fetchWalkAreaStatus, useWalkGeofence } from '../hooks/useWalkGeofence';
+import { fetchWalkTap, fetchWalkAreaStatus, useWalkGeofence } from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
@@ -113,14 +113,15 @@ export const WalkListen = () => {
       payload: { snippetId: string; content: string; duration: number; triggerType?: string },
       source: 'geofence' | 'tap',
     ) => {
+      if (!hasAreaContent) return;
       addMessage({ role: 'companion', content: payload.content, source });
       playWalk(payload, companionId, source === 'geofence');
     },
-    [addMessage, playWalk, companionId],
+    [addMessage, playWalk, companionId, hasAreaContent],
   );
 
   useWalkGeofence({
-    enabled: true,
+    enabled: hasAreaContent,
     lat,
     lng,
     companionId,
@@ -133,33 +134,10 @@ export const WalkListen = () => {
     setIsFetching(true);
     try {
       const payload = await fetchWalkTap(lat, lng, companionId);
+      if (payload.triggerType === 'offsite') return;
       handleSnippet(payload, 'tap');
     } catch (error) {
       console.error('joyjoy walk tap failed:', error);
-      addMessage({
-        role: 'companion',
-        content: '（信号飘了一下）稍等，我重新组织语言…你再点我一次？',
-        source: 'tap',
-      });
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
-  const handleStatusLightTap = async () => {
-    if (isFetching || !companion || hasAreaContent) return;
-
-    setIsFetching(true);
-    try {
-      const payload = await fetchWalkOffsite(companionId);
-      handleSnippet(payload, 'tap');
-    } catch (error) {
-      console.error('joyjoy walk offsite failed:', error);
-      addMessage({
-        role: 'companion',
-        content: '（信号飘了一下）稍等，我重新组织语言…你再点一次灰灯？',
-        source: 'tap',
-      });
     } finally {
       setIsFetching(false);
     }
@@ -169,7 +147,7 @@ export const WalkListen = () => {
     if (messages.length === 0) {
       addMessage({
         role: 'system',
-        content: '欢迎来到边走边听。到了景点我会主动开口；不在景点时，点旅伴头像，听听 ta 的调皮话。',
+        content: '欢迎来到边走边听。到了有讲解的区域，旅伴会主动跟你聊。',
       });
     }
   }, [messages.length, addMessage]);
@@ -186,18 +164,6 @@ export const WalkListen = () => {
       body.style.overflow = prevBodyOverflow;
     };
   }, []);
-
-  const areaStatusText = isLocating
-    ? '定位中…'
-    : hasAreaContent
-      ? `有讲解${nearestFence?.label ? ` · ${nearestFence.label}` : ''}`
-      : '暂无讲解';
-
-  const companionHint = isFetching
-    ? '正在组织语言…'
-    : hasAreaContent
-      ? '点头像听延伸解读'
-      : '点灰灯听调皮话';
 
   return (
     <div
@@ -276,18 +242,12 @@ export const WalkListen = () => {
                 {hasAreaContent ? (
                   <span
                     className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white shadow"
-                    title="当前区域有讲解"
+                    title={nearestFence?.label ?? '当前区域'}
                   />
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleStatusLightTap}
-                    disabled={isFetching}
-                    aria-label="点击听调皮话"
-                    className={cn(
-                      'absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-gray-400 ring-2 ring-white shadow',
-                      'active:scale-110 disabled:opacity-50',
-                    )}
+                  <span
+                    className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 h-3 w-3 rounded-full bg-gray-400 ring-2 ring-white shadow"
+                    title="当前区域暂无讲解"
                   />
                 )}
               </div>
@@ -298,7 +258,9 @@ export const WalkListen = () => {
                 className="min-w-0 touch-target text-right"
               >
                 <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
-                <p className="truncate text-[11px] text-gray-500">{companionHint}</p>
+                {isFetching && (
+                  <p className="truncate text-[11px] text-gray-500">正在组织语言…</p>
+                )}
               </button>
 
               <button
@@ -316,15 +278,12 @@ export const WalkListen = () => {
               </button>
             </div>
 
-            <div className="flex max-w-full items-center gap-1.5 rounded-full border border-black/5 bg-white px-2.5 py-1">
-              <span
-                className={cn(
-                  'h-2 w-2 shrink-0 rounded-full',
-                  hasAreaContent ? 'bg-emerald-500' : 'bg-gray-400',
-                )}
-              />
-              <span className="truncate text-[11px] text-gray-500">{areaStatusText}</span>
-            </div>
+            {hasAreaContent && nearestFence?.label && (
+              <div className="flex max-w-full items-center gap-1.5 rounded-full border border-black/5 bg-white px-2.5 py-1">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                <span className="truncate text-[11px] text-gray-500">{nearestFence.label}</span>
+              </div>
+            )}
           </div>
         </div>
       </header>
