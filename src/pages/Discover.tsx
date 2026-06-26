@@ -31,7 +31,7 @@ export const Discover = () => {
     <PageShell>
       <Header />
 
-      <PageContent className="pt-24">
+      <PageContent>
         <div className="mb-5">
           <p className="text-sm text-gray-500 mb-3">城市故事，随时随地可听</p>
 
