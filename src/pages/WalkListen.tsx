@@ -2,18 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
 import {
+  fetchWalkPlay,
   fetchWalkAreaStatus,
   useWalkGeofence,
   type WalkPlayPayload,
 } from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
-import {
-  GONG_WANG_FU_WALK_POINTS,
-  getWalkTreeForCompanion,
-  pointHasCompanionContent,
-} from '../../api/data/gong-wang-fu-walk.js';
-import { treeToCardLayers } from '../../api/data/walk-snippets.js';
-import { estimateSpeechDuration } from '../../api/data/narrations.js';
+import { GONG_WANG_FU_WALK_POINTS } from '../../api/data/gong-wang-fu-walk.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
@@ -25,6 +20,7 @@ import {
   type WalkChatMessage,
 } from '../store/walk-chat';
 import { getCompanionAvatar } from '../../api/data/media.js';
+import { estimateSpeechDuration } from '../../api/data/narrations.js';
 import { cn, formatBeijingTime } from '@/lib/utils';
 
 interface WalkNearbyStatus {
@@ -38,63 +34,47 @@ interface WalkNearbyStatus {
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
 const WALK_NARRATOR_IDS = ['su-dongpo', 'sharp-elder'] as const;
 
-const WALK_COMPANION_LABELS: Record<(typeof WALK_NARRATOR_IDS)[number], string> = {
-  'su-dongpo': '苏东坡',
-  'sharp-elder': '毒舌老炮',
+const ACT_LABELS: Record<WalkCardAct, string> = {
+  0: '第一幕',
+  1: '第二幕',
+  2: '第三幕',
 };
 
-const FALLBACK_WALK_COMPANIONS = WALK_NARRATOR_IDS.map((id) => ({
-  id,
-  name: WALK_COMPANION_LABELS[id],
-}));
-
-function buildCardLayers(snippetId: string, companionId: string): WalkCardLayers | null {
-  const tree = getWalkTreeForCompanion(snippetId, companionId);
-  if (!tree) return null;
-  return treeToCardLayers(tree);
-}
-
-function getActLayer(act: WalkCardAct): WalkChatMessage['layer'] {
-  if (act === 0) return 'L1';
-  if (act === 1) return 'L2';
-  return 'L3';
-}
-
-function getActContent(layers: WalkCardLayers, act: WalkCardAct, branch: WalkChatBranch = 'A'): string {
-  if (act === 0) return layers.l1;
-  if (act === 1) return branch === 'B' ? (layers.l2B ?? layers.l2A ?? '') : (layers.l2A ?? '');
-  return layers.l3 ?? '';
+function playCardContent(
+  playWalk: ReturnType<typeof usePlayerStore.getState>['playWalk'],
+  snippetId: string,
+  companionId: string,
+  content: string,
+  duration: number,
+) {
+  playWalk({ snippetId, content, duration }, companionId, true);
 }
 
 export const WalkListen = () => {
   const { companions } = useCompanions();
   const { defaultCompanionId, setDefaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
-  const { playWalk, switchCompanion } = usePlayerStore();
+  const { playWalk } = usePlayerStore();
   const { messages, addMessage, updateMessage } = useWalkChatStore();
 
+  const [companionId, setCompanionId] = useState(defaultCompanionId);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
+  const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
   const [simPointId, setSimPointId] = useState(GONG_WANG_FU_WALK_POINTS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const lastL1TriggerRef = useRef<{ snippetId: string; companionId: string; at: number } | null>(null);
-  const lastMessageCountRef = useRef(0);
+  const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
+  const messageCountRef = useRef(0);
 
   const simPoint = useMemo(
     () => GONG_WANG_FU_WALK_POINTS.find((point) => point.id === simPointId) ?? GONG_WANG_FU_WALK_POINTS[0],
     [simPointId],
   );
 
-  const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number, companionId?: string) => {
-    const activeCompanionId = companionId ?? usePreferencesStore.getState().defaultCompanionId;
+  const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number) => {
     try {
-      const { hasAreaContent: inside, nearest } = await fetchWalkAreaStatus(
-        currentLat,
-        currentLng,
-        activeCompanionId,
-      );
+      const { hasAreaContent: inside, nearest } = await fetchWalkAreaStatus(currentLat, currentLng);
       setHasAreaContent(inside);
       if (nearest.id) {
         setNearestFence({
@@ -110,25 +90,19 @@ export const WalkListen = () => {
     }
   }, []);
 
-  const companionName =
-    companions.find((item) => item.id === defaultCompanionId)?.name
-    ?? WALK_COMPANION_LABELS[defaultCompanionId as (typeof WALK_NARRATOR_IDS)[number]]
-    ?? '旅伴';
+  const companion = companions.find((item) => item.id === companionId) ?? companions[0];
+  const walkCompanions = companions.filter((item) =>
+    WALK_NARRATOR_IDS.includes(item.id as (typeof WALK_NARRATOR_IDS)[number]),
+  );
+  const pickerCompanions = walkCompanions.length ? walkCompanions : companions;
+  const isFetching = fetchingMessageId !== null;
 
-  const pickerCompanions = FALLBACK_WALK_COMPANIONS.map((fallback) => {
-    const fromApi = companions.find((item) => item.id === fallback.id);
-    return fromApi ?? fallback;
-  });
-
-  const playCardContent = useCallback(
-    (snippetId: string, content: string, narratorId: string) => {
-      playWalk(
-        { snippetId, content, duration: estimateSpeechDuration(content) },
-        narratorId,
-        true,
-      );
+  const applyCompanion = useCallback(
+    (nextCompanionId: string) => {
+      setCompanionId(nextCompanionId);
+      setDefaultCompanionId(nextCompanionId);
     },
-    [playWalk],
+    [setDefaultCompanionId],
   );
 
   useEffect(() => {
@@ -184,15 +158,15 @@ export const WalkListen = () => {
 
   useEffect(() => {
     if (SIMULATION_ENABLED || isLocating) return;
-    refreshAreaStatus(lat, lng, defaultCompanionId);
-  }, [lat, lng, isLocating, defaultCompanionId, refreshAreaStatus]);
+    refreshAreaStatus(lat, lng);
+  }, [lat, lng, isLocating, refreshAreaStatus]);
 
   useEffect(() => {
     const companionCount = messages.filter((message) => message.role === 'companion').length;
-    if (companionCount > lastMessageCountRef.current) {
+    if (companionCount > messageCountRef.current) {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-    lastMessageCountRef.current = companionCount;
+    messageCountRef.current = companionCount;
   }, [messages]);
 
   const handleGeofenceTrigger = useCallback(
@@ -202,135 +176,134 @@ export const WalkListen = () => {
       const now = Date.now();
       if (
         lastL1TriggerRef.current?.snippetId === payload.snippetId
-        && lastL1TriggerRef.current?.companionId === payload.companionId
         && now - lastL1TriggerRef.current.at < 1500
       ) {
         return;
       }
-      lastL1TriggerRef.current = {
-        snippetId: payload.snippetId,
-        companionId: payload.companionId,
-        at: now,
-      };
+      lastL1TriggerRef.current = { snippetId: payload.snippetId, at: now };
 
-      const layers = buildCardLayers(payload.snippetId, payload.companionId);
-      if (!layers) return;
+      const spot = GONG_WANG_FU_WALK_POINTS.find((point) => point.id === payload.snippetId);
 
-      const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === payload.snippetId);
-
+      applyCompanion(payload.companionId);
       addMessage({
         role: 'companion',
-        content: layers.l1,
+        content: payload.content,
         source: 'geofence',
         snippetId: payload.snippetId,
         companionId: payload.companionId,
-        cardAct: 0,
-        layers,
-        spotLabel: point?.label,
         layer: 'L1',
-        branch: 'A',
+        cardAct: 0,
+        layers: { l1: payload.content },
+        spotLabel: spot?.label ?? payload.label,
       });
-
-      playCardContent(payload.snippetId, layers.l1, payload.companionId);
+      playWalk(payload, payload.companionId, true);
     },
-    [addMessage, hasAreaContent, playCardContent],
+    [addMessage, applyCompanion, hasAreaContent, playWalk],
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
     enabled: SIMULATION_ENABLED || hasAreaContent,
     lat,
     lng,
-    companionId: defaultCompanionId,
     simulationMode: SIMULATION_ENABLED,
     onTrigger: handleGeofenceTrigger,
   });
 
-  const retriggerCurrentStation = useCallback(
-    async (companionId: string) => {
-      const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === simPointId);
-      if (!point || !pointHasCompanionContent(simPointId, companionId)) {
-        setHasAreaContent(false);
-        return;
-      }
+  const applyCardAct = useCallback(
+    async (message: WalkChatMessage, nextAct: WalkCardAct, branch: WalkChatBranch = message.branch ?? 'A') => {
+      if (!message.snippetId || fetchingMessageId) return;
 
-      setHasAreaContent(true);
-      resetSession();
-      lastL1TriggerRef.current = null;
-      await triggerPoint(simPointId, point.lat, point.lng, companionId);
+      setFetchingMessageId(message.id);
+      try {
+        const narratorId = message.companionId ?? companionId;
+        const layers: WalkCardLayers = { ...(message.layers ?? { l1: message.content }) };
+        let content: string;
+        let duration: number;
+
+        if (nextAct === 0) {
+          content = layers.l1;
+          duration = estimateSpeechDuration(content);
+        } else if (nextAct === 1) {
+          if (branch === 'B' && layers.l2B) {
+            content = layers.l2B;
+            duration = estimateSpeechDuration(content);
+          } else if (branch === 'A' && layers.l2A) {
+            content = layers.l2A;
+            duration = estimateSpeechDuration(content);
+          } else {
+            const payload = await fetchWalkPlay(message.snippetId, narratorId, {
+              layer: 'L2',
+              branch,
+              trigger: 'tap',
+            });
+            content = payload.content;
+            duration = payload.duration;
+            if (branch === 'B') {
+              layers.l2B = content;
+              layers.l2BLabel = payload.label;
+            } else {
+              layers.l2A = content;
+              layers.l2ALabel = payload.label;
+            }
+          }
+        } else if (layers.l3) {
+          content = layers.l3;
+          duration = estimateSpeechDuration(content);
+        } else {
+          const payload = await fetchWalkPlay(message.snippetId, narratorId, {
+            layer: 'L3',
+            trigger: 'tap',
+          });
+          content = payload.content;
+          duration = payload.duration;
+          layers.l3 = content;
+        }
+
+        updateMessage(message.id, {
+          cardAct: nextAct,
+          content,
+          layers,
+          branch,
+          layer: nextAct === 0 ? 'L1' : nextAct === 1 ? 'L2' : 'L3',
+        });
+
+        playCardContent(playWalk, message.snippetId, narratorId, content, duration);
+      } catch (error) {
+        console.error('joyjoy walk card act failed:', error);
+      } finally {
+        setFetchingMessageId(null);
+      }
     },
-    [simPointId, resetSession, triggerPoint],
+    [companionId, fetchingMessageId, playWalk, updateMessage],
   );
 
-  const selectCompanionManually = useCallback(
-    async (nextCompanionId: string) => {
-      setDefaultCompanionId(nextCompanionId);
-      setShowCompanionPicker(false);
-      switchCompanion(nextCompanionId);
-      await refreshAreaStatus(lat, lng, nextCompanionId);
-      if (SIMULATION_ENABLED) {
-        await retriggerCurrentStation(nextCompanionId);
-      }
-    },
-    [setDefaultCompanionId, switchCompanion, refreshAreaStatus, lat, lng, retriggerCurrentStation],
-  );
-
-  const handleContinueCard = (message: WalkChatMessage) => {
-    if (!message.layers || message.cardAct === undefined || message.cardAct >= 2 || isFetching) return;
-
-    const nextAct = (message.cardAct + 1) as WalkCardAct;
-    const branch = message.branch ?? 'A';
-    const content = getActContent(message.layers, nextAct, branch);
-    const narratorId = defaultCompanionId;
-
-    updateMessage(message.id, {
-      cardAct: nextAct,
-      content,
-      layer: getActLayer(nextAct),
-    });
-    playCardContent(message.snippetId ?? message.id, content, narratorId);
+  const handleContinueStory = (message: WalkChatMessage) => {
+    const act = message.cardAct ?? 0;
+    if (act >= 2) return;
+    void applyCardAct(message, (act + 1) as WalkCardAct, message.branch ?? 'A');
   };
 
-  const handleBackCard = (message: WalkChatMessage) => {
-    if (!message.layers || message.cardAct === undefined || message.cardAct <= 0 || isFetching) return;
-
-    const prevAct = (message.cardAct - 1) as WalkCardAct;
-    const branch = message.branch ?? 'A';
-    const content = getActContent(message.layers, prevAct, branch);
-    const narratorId = defaultCompanionId;
-
-    updateMessage(message.id, {
-      cardAct: prevAct,
-      content,
-      layer: getActLayer(prevAct),
-    });
-    playCardContent(message.snippetId ?? message.id, content, narratorId);
+  const handlePrevAct = (message: WalkChatMessage) => {
+    const act = message.cardAct ?? 0;
+    if (act <= 0) return;
+    void applyCardAct(message, (act - 1) as WalkCardAct, message.branch ?? 'A');
   };
 
-  const handleSwapL2Branch = (message: WalkChatMessage) => {
-    if (!message.layers || message.cardAct !== 1 || isFetching) return;
-
+  const handleSwitchBranch = (message: WalkChatMessage) => {
+    const act = message.cardAct ?? 0;
+    if (act !== 1) return;
     const nextBranch: WalkChatBranch = message.branch === 'B' ? 'A' : 'B';
-    const content = getActContent(message.layers, 1, nextBranch);
-    const narratorId = defaultCompanionId;
-
-    updateMessage(message.id, {
-      branch: nextBranch,
-      content,
-      source: 'branch',
-    });
-    playCardContent(message.snippetId ?? message.id, content, narratorId);
+    void applyCardAct(message, 1, nextBranch);
   };
 
   const handleSimPointSelect = async (pointId: string) => {
     const point = GONG_WANG_FU_WALK_POINTS.find((item) => item.id === pointId);
     if (!point) return;
 
-    const companionId = usePreferencesStore.getState().defaultCompanionId;
-    const hasContent = pointHasCompanionContent(pointId, companionId);
-
     setSimPointId(pointId);
     setLocation(point.lat, point.lng, point.label);
-    setHasAreaContent(hasContent);
+    applyCompanion(point.primaryCompanionId);
+    setHasAreaContent(true);
     setNearestFence({
       id: point.id,
       label: point.label,
@@ -338,16 +311,9 @@ export const WalkListen = () => {
       inside: true,
       radius: WALK_LISTEN_CONFIG.fence.byAreaTag['gong-wang-fu'] ?? 30,
     });
-
-    if (!hasContent) {
-      resetSession();
-      lastL1TriggerRef.current = null;
-      return;
-    }
-
     resetSession();
     lastL1TriggerRef.current = null;
-    await triggerPoint(pointId, point.lat, point.lng, companionId);
+    await triggerPoint(pointId, point.lat, point.lng);
   };
 
   const initialSimTriggeredRef = useRef(false);
@@ -381,51 +347,65 @@ export const WalkListen = () => {
     };
   }, []);
 
-  const renderCardNav = (message: WalkChatMessage) => {
-    if (!message.layers || message.cardAct === undefined) return null;
-
-    const canBack = message.cardAct > 0;
-    const canContinue = message.cardAct < 2;
+  const renderCardFooter = (message: WalkChatMessage) => {
+    const act = message.cardAct ?? 0;
+    const isLoading = fetchingMessageId === message.id;
 
     return (
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <div className="min-w-[2rem]">
-          {canBack && (
-            <button
-              type="button"
-              onClick={() => handleBackCard(message)}
-              className="px-1 text-sm text-gray-500 active:text-gray-800"
-              aria-label="上一幕"
-            >
-              {'<-'}
-            </button>
-          )}
-        </div>
+      <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-black/5 pt-2">
+        {act > 0 ? (
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => handlePrevAct(message)}
+            className="shrink-0 text-xs text-gray-500 active:text-gray-800 disabled:opacity-50"
+          >
+            上一幕
+          </button>
+        ) : (
+          <span className="shrink-0" aria-hidden />
+        )}
 
-        <div className="flex flex-1 items-center justify-end gap-2">
-          {message.cardAct === 1 && (
+        <div className="flex min-w-0 items-center justify-end gap-2">
+          {act === 1 && (
             <button
               type="button"
-              disabled={isFetching}
-              onClick={() => handleSwapL2Branch(message)}
-              className="rounded-full bg-black/5 px-2.5 py-1 text-[11px] text-gray-600 active:bg-black/10 disabled:opacity-50"
+              disabled={isLoading}
+              onClick={() => handleSwitchBranch(message)}
+              className="shrink-0 text-xs text-gray-500 active:text-gray-800 disabled:opacity-50"
             >
-              换一个说法
+              换个说法
             </button>
           )}
-          {canContinue && (
+          {act < 2 && (
             <button
               type="button"
-              disabled={isFetching}
-              onClick={() => handleContinueCard(message)}
-              className="rounded-full bg-gold/15 px-3 py-1 text-xs text-gray-800 active:bg-gold/25 disabled:opacity-50"
+              disabled={isLoading}
+              onClick={() => handleContinueStory(message)}
+              className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs text-gray-800 active:bg-gold/25 disabled:opacity-50"
             >
-              继续说
+              {isLoading ? '加载中…' : '继续说'}
             </button>
           )}
         </div>
       </div>
     );
+  };
+
+  const getActSubtitle = (message: WalkChatMessage) => {
+    const act = message.cardAct ?? 0;
+    if (act === 0) return null;
+
+    const layers = message.layers;
+    if (act === 1) {
+      const branchLabel =
+        message.branch === 'B'
+          ? layers?.l2BLabel
+          : layers?.l2ALabel;
+      return branchLabel ?? ACT_LABELS[1];
+    }
+
+    return ACT_LABELS[2];
   };
 
   return (
@@ -464,10 +444,13 @@ export const WalkListen = () => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => selectCompanionManually(item.id)}
+                      onClick={() => {
+                        applyCompanion(item.id);
+                        setShowCompanionPicker(false);
+                      }}
                       className={cn(
                         'flex flex-col items-center gap-1 rounded-xl p-2 touch-target',
-                        defaultCompanionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
+                        companionId === item.id ? 'bg-gold/15 ring-1 ring-gold/40' : 'active:bg-black/5',
                       )}
                     >
                       <img src={getCompanionAvatar(item.id)} alt={item.name} className="h-10 w-10 rounded-md object-cover" />
@@ -485,8 +468,8 @@ export const WalkListen = () => {
                   className={cn('block rounded-md', !hasAreaContent && 'opacity-90')}
                 >
                   <img
-                    src={getCompanionAvatar(defaultCompanionId)}
-                    alt={companionName}
+                    src={getCompanionAvatar(companionId)}
+                    alt={companion?.name || '旅伴'}
                     className={cn(
                       'h-10 w-10 rounded-md border-2 bg-white object-cover',
                       hasAreaContent ? 'border-emerald-400' : 'border-transparent',
@@ -511,7 +494,7 @@ export const WalkListen = () => {
                 onClick={() => setShowCompanionPicker((open) => !open)}
                 className="min-w-0 touch-target text-right"
               >
-                <p className="truncate text-sm font-medium text-gray-900">{companionName}</p>
+                <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
                 {isFetching && (
                   <p className="truncate text-[11px] text-gray-500">正在组织语言…</p>
                 )}
@@ -564,7 +547,9 @@ export const WalkListen = () => {
       >
         {messages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
-          const messageCompanionId = defaultCompanionId;
+          const messageCompanionId = message.companionId ?? companionId;
+          const act = message.cardAct ?? 0;
+          const actSubtitle = getActSubtitle(message);
 
           if (message.role === 'system') {
             return (
@@ -577,29 +562,32 @@ export const WalkListen = () => {
             );
           }
 
-          const act = message.cardAct ?? 0;
-
           return (
             <div key={message.id} className="flex max-w-[88%] items-start gap-2">
               <img
                 src={getCompanionAvatar(messageCompanionId)}
-                alt={companionName}
+                alt={companion?.name || '旅伴'}
                 className="h-9 w-9 shrink-0 rounded-md bg-white object-cover"
               />
-              <div className="relative min-w-0 rounded-lg bg-white px-3 py-2.5 shadow-sm before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white before:content-['']">
-                {message.spotLabel && (
-                  <p className="mb-1 text-[11px] text-gray-400">{message.spotLabel}</p>
-                )}
-                {act > 0 && (
-                  <p className="mb-1 text-[11px] font-medium text-gold">
-                    {act === 1 ? '第二幕' : '第三幕'}
-                  </p>
-                )}
+              <div className="relative min-w-0 flex-1 rounded-lg bg-white px-3 py-2.5 shadow-sm before:absolute before:left-[-6px] before:top-3 before:border-[6px] before:border-transparent before:border-r-white before:content-['']">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    {message.spotLabel && (
+                      <p className="truncate text-[11px] text-gray-400">{message.spotLabel}</p>
+                    )}
+                    {actSubtitle && (
+                      <p className="truncate text-[11px] font-medium text-gold">{actSubtitle}</p>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-[10px] tabular-nums text-gray-300">
+                    {act + 1}/3
+                  </span>
+                </div>
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-900">
                   {message.content}
                 </p>
                 <p className="mt-1 text-right text-[11px] text-gray-400">{timeLabel}</p>
-                {message.layers && renderCardNav(message)}
+                {renderCardFooter(message)}
               </div>
             </div>
           );

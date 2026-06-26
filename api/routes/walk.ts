@@ -15,9 +15,8 @@ const router = express.Router();
 router.get('/nearby', (req: Request, res: Response) => {
   const lat = parseFloat(req.query.lat as string) || 39.9371;
   const lng = parseFloat(req.query.lng as string) || 116.3862;
-  const companionId = (req.query.companionId as string) || undefined;
   const verbose = req.query.verbose === '1';
-  res.json(verbose ? getNearbyWalkStatus(lat, lng, companionId) : getNearbyWalkMetas(lat, lng, companionId));
+  res.json(verbose ? getNearbyWalkStatus(lat, lng) : getNearbyWalkMetas(lat, lng));
 });
 
 /** 场景B：点击头像 — 围栏内默认 L2-A，围栏外调皮话 */
@@ -32,7 +31,7 @@ router.get('/tap', (req: Request, res: Response) => {
     return;
   }
 
-  const payload = resolveWalkPlay(activeSnippet.id, companionId, {
+  const payload = resolveWalkPlay(activeSnippet.id, activeSnippet.primaryCompanionId, {
     layer: 'L2',
     branch: 'A',
     trigger: 'tap',

@@ -1,6 +1,5 @@
 import { stories } from './data/stories.js';
 import { companions } from './data/companions.js';
-import { synthesizeSpeechWithFallback } from './data/tts-synthesize.js';
 
 export interface Env {
   // 可以在这里添加绑定的变量和 KV 命名空间
@@ -81,26 +80,27 @@ export default {
     if (path === '/api/tts') {
       if (method === 'GET') {
         const text = url.searchParams.get('text');
-        const companionId = url.searchParams.get('companionId');
-        const profileId = url.searchParams.get('profile');
-
+        const lang = url.searchParams.get('lang') || 'zh-CN';
+        
         if (!text) {
           return Response.json({ error: 'Text parameter is required' }, { status: 400, headers: corsHeaders });
         }
 
+        const encodedText = encodeURIComponent(text);
+        const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
+        
         try {
-          const { response, provider } = await synthesizeSpeechWithFallback({ text, companionId, profileId });
+          const response = await fetch(googleTtsUrl);
           if (!response.ok) {
             return Response.json({ error: 'Failed to generate audio' }, { status: 500, headers: corsHeaders });
           }
-
+          
           const audioBuffer = await response.arrayBuffer();
           return new Response(audioBuffer, {
             headers: {
               ...corsHeaders,
-              'Content-Type': 'audio/mpeg',
+              'Content-Type': 'audio/mp3',
               'Cache-Control': 'public, max-age=86400',
-              'X-TTS-Provider': provider,
             },
           });
         } catch (e) {

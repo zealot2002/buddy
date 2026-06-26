@@ -1,5 +1,4 @@
 import data from './stories-data.json';
-import { synthesizeSpeechWithFallback } from './tts-synthesize.js';
 
 const { stories, companions, walkSnippets = [], walkOffsiteChatter = {}, appConfig = {} } = data;
 
@@ -65,34 +64,53 @@ function resolveTreeVariant(tree, layer, branch) {
 
 function resolveWalkPlay(snippetId, companionId, options = {}) {
   const snippet = walkSnippets.find((item) => item.id === snippetId);
-  if (!snippet || !companionId) return null;
+  if (!snippet) return null;
 
   const layer = options.layer || 'L1';
   const branch = options.branch || 'A';
   const trigger = options.trigger || (layer === 'L1' ? 'auto' : 'tap');
-  const normalizedId = normalizeCompanionId(companionId);
-  const tree = snippet.treesByCompanion?.[normalizedId] ?? snippet.tree;
-  if (!tree) return null;
+  const normalizedId = normalizeCompanionId(companionId || snippet.primaryCompanionId || 'su-dongpo');
 
-  const variant = resolveTreeVariant(tree, layer, branch);
-  if (!variant?.content) return null;
+  if (snippet.tree) {
+    const variant = resolveTreeVariant(snippet.tree, layer, branch);
+    if (!variant?.content) return null;
+
+    return {
+      snippetId,
+      companionId: normalizedId,
+      versionId: variant.versionId,
+      content: variant.content,
+      styleNote: variant.styleNote || '',
+      duration: estimateSpeechDuration(variant.content),
+      triggerType: trigger,
+      layer,
+      branch: layer === 'L2' ? branch : undefined,
+      label:
+        layer === 'L2'
+          ? branch === 'B'
+            ? snippet.tree.l2B?.label
+            : snippet.tree.l2A?.label
+          : snippet.label,
+    };
+  }
+
+  const companionScripts = snippet.scripts?.[normalizedId];
+  const pool = trigger === 'tap' ? companionScripts?.tap : companionScripts?.auto;
+  const legacyPool = companionScripts?.variants;
+  const variants = pool?.variants || legacyPool;
+  if (!variants?.length) return null;
+
+  const picked = pickRandomVariant(variants);
+  const duration = estimateSpeechDuration(picked.content);
 
   return {
     snippetId,
     companionId: normalizedId,
-    versionId: variant.versionId,
-    content: variant.content,
-    styleNote: variant.styleNote || '',
-    duration: estimateSpeechDuration(variant.content),
+    versionId: picked.versionId,
+    content: picked.content,
+    styleNote: picked.styleNote || '',
+    duration,
     triggerType: trigger,
-    layer,
-    branch: layer === 'L2' ? branch : undefined,
-    label:
-      layer === 'L2'
-        ? branch === 'B'
-          ? tree.l2B?.label
-          : tree.l2A?.label
-        : snippet.label,
   };
 }
 
@@ -113,26 +131,22 @@ function resolveOffsiteChatter(companionId) {
   };
 }
 
-function getNearbyWalkMetas(lat, lng, companionId, limit = walkConfig.nearby?.limit ?? 20) {
+function getNearbyWalkMetas(lat, lng, limit = walkConfig.nearby?.limit ?? 20) {
   return walkSnippets
     .map((snippet) => {
       const distanceMeters = Math.round(
         haversineMeters(lat, lng, snippet.location.lat, snippet.location.lng),
       );
       const inside = distanceMeters <= snippet.location.radiusMeters;
-      const normalizedId = companionId ? normalizeCompanionId(companionId) : null;
-      const hasContent = normalizedId
-        ? Boolean(snippet.treesByCompanion?.[normalizedId] ?? snippet.tree)
-        : undefined;
       return {
         id: snippet.id,
         label: snippet.label,
         lat: snippet.location.lat,
         lng: snippet.location.lng,
         radius: snippet.location.radiusMeters,
+        primaryCompanionId: snippet.primaryCompanionId,
         distanceMeters,
         inside,
-        hasContent,
       };
     })
     .sort((a, b) => a.distanceMeters - b.distanceMeters)
@@ -178,11 +192,10 @@ export async function onRequest(context) {
   if (path.startsWith('/api/walk')) {
     if (method === 'GET') {
       if (path === '/api/walk/nearby') {
-        const lat = parseFloat(url.searchParams.get('lat') || '39.9371');
-        const lng = parseFloat(url.searchParams.get('lng') || '116.3862');
-        const companionId = url.searchParams.get('companionId') || undefined;
+        const lat = parseFloat(url.searchParams.get('lat') || '39.9163');
+        const lng = parseFloat(url.searchParams.get('lng') || '116.3972');
         const verbose = url.searchParams.get('verbose') === '1';
-        const items = getNearbyWalkMetas(lat, lng, companionId);
+        const items = getNearbyWalkMetas(lat, lng);
         if (verbose) {
           return Response.json(items, { headers: corsHeaders });
         }
@@ -207,7 +220,7 @@ export async function onRequest(context) {
           return Response.json(resolveOffsiteChatter(companionId), { headers: corsHeaders });
         }
 
-        const payload = resolveWalkPlay(activeSnippet.id, companionId, {
+        const payload = resolveWalkPlay(activeSnippet.id, activeSnippet.primaryCompanionId, {
           layer: 'L2',
           branch: 'A',
           trigger: 'tap',
@@ -292,15 +305,17 @@ export async function onRequest(context) {
   if (path === '/api/tts') {
     if (method === 'GET') {
       const text = url.searchParams.get('text');
-      const companionId = url.searchParams.get('companionId');
-      const profileId = url.searchParams.get('profile');
+      const lang = url.searchParams.get('lang') || 'zh-CN';
 
       if (!text) {
         return Response.json({ error: 'Text parameter is required' }, { status: 400, headers: corsHeaders });
       }
 
+      const encodedText = encodeURIComponent(text);
+      const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
+
       try {
-        const { response, provider } = await synthesizeSpeechWithFallback({ text, companionId, profileId });
+        const response = await fetch(googleTtsUrl);
         if (!response.ok) {
           return Response.json({ error: 'Failed to generate audio' }, { status: 500, headers: corsHeaders });
         }
@@ -309,9 +324,8 @@ export async function onRequest(context) {
         return new Response(audioBuffer, {
           headers: {
             ...corsHeaders,
-            'Content-Type': 'audio/mpeg',
+            'Content-Type': 'audio/mp3',
             'Cache-Control': 'public, max-age=86400',
-            'X-TTS-Provider': provider,
           },
         });
       } catch {

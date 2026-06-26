@@ -1,39 +1,27 @@
 import express from 'express';
-import { synthesizeSpeechWithFallback } from '../data/tts-synthesize.js';
+import https from 'https';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  const text = req.query.text as string | undefined;
-  const companionId = (req.query.companionId as string | undefined) ?? null;
-  const profileId = (req.query.profile as string | undefined) ?? null;
-
+router.get('/', (req, res) => {
+  const { text, lang = 'zh-CN' } = req.query;
+  
   if (!text) {
-    res.status(400).json({ error: 'Text parameter is required' });
-    return;
+    return res.status(400).json({ error: 'Text parameter is required' });
   }
 
-  try {
-    const { response, provider } = await synthesizeSpeechWithFallback({
-      text,
-      companionId,
-      profileId,
-    });
+  const encodedText = encodeURIComponent(text as string);
+  const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
 
-    if (!response.ok) {
-      res.status(500).json({ error: 'Failed to generate audio' });
-      return;
-    }
-
-    const audioBuffer = await response.arrayBuffer();
-    res.setHeader('Content-Type', 'audio/mpeg');
+  https.get(googleTtsUrl, (response) => {
+    res.setHeader('Content-Type', 'audio/mp3');
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.setHeader('X-TTS-Provider', provider);
-    res.send(Buffer.from(audioBuffer));
-  } catch (err) {
-    console.error('joyjoy TTS request error:', err);
+    
+    response.pipe(res);
+  }).on('error', (err) => {
+    console.error('TTS request error:', err);
     res.status(500).json({ error: 'Failed to generate audio' });
-  }
+  });
 });
 
 export default router;
