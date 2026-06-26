@@ -7,7 +7,7 @@ export interface OffsiteChatterScript {
   styleNote: string;
 }
 
-/** 非景点区域点击头像时随机触发的「调皮话」 */
+/** 非景点区域点击头像时随机触发的「调皮话」（MVP：苏东坡 / 毒舌老炮） */
 export const WALK_OFFSITE_CHATTER: Record<string, OffsiteChatterScript[]> = {
   'su-dongpo': [
     {
@@ -33,58 +33,6 @@ export const WALK_OFFSITE_CHATTER: Record<string, OffsiteChatterScript[]> = {
       styleNote: '无定位，俏皮闲聊',
       content:
         '你这手指头倒是勤快，点我作甚？我此刻既无酒也无月，只剩一肚子不合时宜——你真要听？',
-    },
-  ],
-  'lin-huiyin': [
-    {
-      versionId: 'lin-huiyin-offsite-1',
-      styleNote: '无定位，温柔引导',
-      content:
-        '这里暂时没有我熟悉的老建筑呢。不如你抬头看看这栋楼的天际线，它和天空的夹角，其实也藏着比例的美。',
-    },
-    {
-      versionId: 'lin-huiyin-offsite-2',
-      styleNote: '无定位，温柔引导',
-      content:
-        '我们的位置好像跑出了我的图纸范围。不过没关系，四月天在哪里，哪里就值得多看两眼。',
-    },
-    {
-      versionId: 'lin-huiyin-offsite-3',
-      styleNote: '无定位，温柔引导',
-      content:
-        '你点我的时候，我正想着梁先生说过的一句话：「建筑师是幸福的，因为他能看到别人看不到的东西。」现在，我把这句话送给你。',
-    },
-    {
-      versionId: 'lin-huiyin-offsite-4',
-      styleNote: '无定位，温柔引导',
-      content:
-        '嘘——虽然没到景点，但你有没有听到这城市底下的嗡嗡声？那是时间在赶路呢。',
-    },
-  ],
-  'gentle-lady': [
-    {
-      versionId: 'gentle-lady-offsite-1',
-      styleNote: '无定位，治愈陪伴',
-      content:
-        '别急呀，亲爱的，咱们还没到故事开始的地方。先喝口水，整理一下背包肩带，我等你。',
-    },
-    {
-      versionId: 'gentle-lady-offsite-2',
-      styleNote: '无定位，治愈陪伴',
-      content:
-        '这会儿没有什么要讲给你听的，就是想告诉你，你走路的样子很好看，继续走吧。',
-    },
-    {
-      versionId: 'gentle-lady-offsite-3',
-      styleNote: '无定位，治愈陪伴',
-      content:
-        '点我一下，是不是有点累了？那我们在路边坐一小会儿，看云飘过去，也算是一个小小景点。',
-    },
-    {
-      versionId: 'gentle-lady-offsite-4',
-      styleNote: '无定位，治愈陪伴',
-      content:
-        '你看，这里虽然不在我们的清单上，但阳光落在你肩膀上的角度，刚刚好呢。',
     },
   ],
   'sharp-elder': [

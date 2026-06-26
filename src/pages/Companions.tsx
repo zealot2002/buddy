@@ -25,12 +25,12 @@ export const Companions = () => {
       <PageContent>
         <section className="mb-6">
           <h1 className="font-serif text-xl sm:text-2xl font-bold text-light-blue mb-2">选择你的旅伴</h1>
-          <p className="text-sm text-gray-400">每一位旅伴都有独特的风格和故事，找到最适合你的那一位</p>
+          <p className="text-sm text-gray-400">MVP 两位旅伴：苏东坡与毒舌老炮，同一故事不同视角</p>
         </section>
 
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2].map((i) => (
               <div key={i} className="aspect-square bg-card-bg rounded-2xl animate-pulse" />
             ))}
           </div>
@@ -84,7 +84,7 @@ export const Companions = () => {
               </li>
               <li className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-gold mt-1.5 shrink-0" />
-                <span>苏东坡会用诗词解读，林徽因会从建筑角度切入</span>
+                <span>苏东坡豪放讲史，毒舌老炮犀利揭秘</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-gold mt-1.5 shrink-0" />

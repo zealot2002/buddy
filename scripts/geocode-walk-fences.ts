@@ -1,23 +1,13 @@
 /**
- * 围栏坐标工具 — 不必逐个现场跑点。
+ * 围栏坐标工具 — 恭王府 MVP
  *
  * 用法：
- *   npm run geocode:fences -- convert --from gcj02 --lat 41.768 --lng 123.427
- *   npm run geocode:fences -- convert --from bd09 --lat 41.771 --lng 123.441
- *   npm run geocode:fences -- validate --lat 41.7621 --lng 123.4207
+ *   npm run geocode:fences -- convert --from gcj02 --lat 39.937 --lng 116.386
+ *   npm run geocode:fences -- validate --lat 39.9371 --lng 116.3862
  *   npm run geocode:fences -- list
- *
- * 批量建围栏推荐流程（每个区域只需 1 次现场锚点）：
- *   1. 在目标 POI 用浏览器 GPS 拿到 WGS84，写入 registry 的 ANCHOR
- *   2. 在同区域地图（高德/百度）拾取各 POI 坐标，写入 BD09/GCJ02 参考表
- *   3. 运行 npm run geocode:fences -- list 核对输出 WGS84
- *   4. 任意位置运行 validate，确认距离合理
  */
 import { toWgs84, type CoordSystem } from '../api/data/coord-utils.js';
-import {
-  SHENYANG_SANHAO_FENCES,
-  SANHAO_WGS84_ANCHOR,
-} from '../api/data/walk-fence-registry.js';
+import { GONG_WANG_FU_AREA, GONG_WANG_FU_FENCES } from '../api/data/walk-areas.js';
 import { getNearbyWalkStatus, haversineMeters } from '../api/data/walk-snippets.js';
 
 function parseArgs(argv: string[]) {
@@ -38,14 +28,14 @@ function printHelp() {
 
 命令:
   convert --from gcj02|bd09 --lat <纬度> --lng <经度>
-  validate --lat <纬度> --lng <经度>   查看距各围栏距离
-  list                                 列出三好街围栏 WGS84
+  validate --lat <纬度> --lng <经度>   查看距恭王府各围栏距离
+  list                                 列出恭王府围栏 WGS84
 
 注意:
   - 浏览器 Geolocation → WGS84
   - 高德/腾讯拾取 → GCJ-02，需 convert --from gcj02
   - 百度拾取 → BD-09，需 convert --from bd09
-  - 切勿把地图坐标直接写进 walk-snippets`);
+  - 语料坐标写在 api/data/gong-wang-fu.json`);
 }
 
 function cmdConvert(flags: Record<string, string>) {
@@ -61,7 +51,7 @@ function cmdConvert(flags: Record<string, string>) {
     return;
   }
   const [wgsLng, wgsLat] = toWgs84(lng, lat, from);
-  console.log('WGS84（写入围栏）:', { lat: wgsLat, lng: wgsLng });
+  console.log('WGS84（写入围栏 JSON）:', { lat: wgsLat, lng: wgsLng });
 }
 
 function cmdValidate(flags: Record<string, string>) {
@@ -72,11 +62,14 @@ function cmdValidate(flags: Record<string, string>) {
     process.exit(1);
   }
 
-  console.log('joyjoy 围栏校验 @', lat, lng);
-  console.log('锚点（百脑汇现场 WGS84）:', SANHAO_WGS84_ANCHOR);
+  const sim = GONG_WANG_FU_AREA.simulation;
+  console.log('joyjoy 恭王府围栏校验 @', lat, lng);
+  if (sim) {
+    console.log('模拟基准点:', { lat: sim.baseLat, lng: sim.baseLng });
+  }
   console.log('');
 
-  const nearby = getNearbyWalkStatus(lat, lng, 15);
+  const nearby = getNearbyWalkStatus(lat, lng, 20);
   for (const item of nearby) {
     const tag = item.inside ? '✓ 围栏内' : '  围栏外';
     console.log(
@@ -84,19 +77,23 @@ function cmdValidate(flags: Record<string, string>) {
     );
   }
 
-  const anchorDist = Math.round(
-    haversineMeters(lat, lng, SANHAO_WGS84_ANCHOR.lat, SANHAO_WGS84_ANCHOR.lng),
-  );
-  console.log('');
-  console.log(`距百脑汇锚点 ${anchorDist}m`);
+  if (sim) {
+    const baseDist = Math.round(haversineMeters(lat, lng, sim.baseLat, sim.baseLng));
+    console.log('');
+    console.log(`距模拟基准点 ${baseDist}m`);
+  }
 }
 
 function cmdList() {
-  console.log('沈阳三好街围栏（WGS84）:\n');
-  for (const fence of SHENYANG_SANHAO_FENCES) {
+  console.log('恭王府围栏（WGS84）:\n');
+  for (const fence of GONG_WANG_FU_FENCES) {
     console.log(`${fence.label} [${fence.id}]`);
-    console.log(`  lat: ${fence.lat}, lng: ${fence.lng}, radius: ${fence.radiusMeters}m`);
-    console.log(`  source: ${fence.coordSource}, address: ${fence.address ?? '-'}`);
+    console.log(
+      `  lat: ${fence.location.lat}, lng: ${fence.location.lng}, radius: ${fence.location.radiusMeters}m`,
+    );
+    if (fence.triggerHint) {
+      console.log(`  hint: ${fence.triggerHint}`);
+    }
     console.log('');
   }
 }

@@ -9,11 +9,9 @@ export const STORY_COVER_IMAGES: Record<string, string> = {
   'yueyang-tower': '/images/yueyang-tower.jpg',
 };
 
-/** 旅伴头像：public/images/avatars/ 下本地 PNG/JPEG，按 companion id 映射 */
+/** 旅伴头像：public/images/avatars/ 下本地 PNG/JPEG，按 companion id 映射（MVP 两位） */
 export const COMPANION_AVATARS: Record<string, string> = {
   'su-dongpo': '/images/avatars/su-dongpo.jpeg',
-  'lin-huiyin': '/images/avatars/lin-huiyin.jpeg',
-  'gentle-lady': '/images/avatars/gentle-lady.jpeg',
   'sharp-elder': '/images/avatars/sharp-elder.png',
 };
 
@@ -40,4 +38,14 @@ export function getStoryCoverImage(storyId: string, fallback?: string): string {
 
 export function getCompanionAvatar(companionId: string, _fallback?: string): string {
   return COMPANION_AVATARS[companionId] || DEFAULT_AVATAR;
+}
+
+/** 边走边听入场视频（public/videos/） */
+export const WALK_INTRO_VIDEOS: Partial<Record<string, string>> = {
+  'su-dongpo': '/videos/su-dongpo.mp4',
+  'sharp-elder': '/videos/sharp-elder.mp4',
+};
+
+export function getWalkIntroVideo(companionId: string): string | undefined {
+  return WALK_INTRO_VIDEOS[companionId];
 }

@@ -67,9 +67,6 @@ export const WALK_LISTEN_CONFIG: WalkListenConfig = {
   fence: {
     byAreaTag: {
       'gong-wang-fu': 30,
-      'forbidden-city': 30,
-      'summer-palace': 35,
-      'shenyang-sanhao': 80,
     },
     defaultMeters: 50,
   },

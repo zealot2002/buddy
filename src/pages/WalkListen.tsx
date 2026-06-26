@@ -14,7 +14,8 @@ import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
 import { useWalkChatStore, type WalkChatMessage } from '../store/walk-chat';
 import { useWalkPlayedJokesStore } from '../store/walk-played-jokes';
-import { getCompanionAvatar } from '../../api/data/media.js';
+import { getCompanionAvatar, getWalkIntroVideo } from '../../api/data/media.js';
+import { WalkIntroVideo } from '../components/WalkIntroVideo';
 import { estimateSpeechDuration } from '../../api/data/narrations.js';
 import { cn, formatBeijingTime } from '@/lib/utils';
 
@@ -42,10 +43,13 @@ export const WalkListen = () => {
   const { companions } = useCompanions();
   const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
-  const { playWalk } = usePlayerStore();
+  const { playWalk, stop: stopPlayer } = usePlayerStore();
   const { messages, addMessage, updateMessage } = useWalkChatStore();
   const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
 
+
+  const introVideoSrc = getWalkIntroVideo(defaultCompanionId);
+  const [introComplete, setIntroComplete] = useState(!introVideoSrc);
 
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
@@ -80,6 +84,17 @@ export const WalkListen = () => {
 
   const companion = companions.find((item) => item.id === defaultCompanionId) ?? companions[0];
   const isFetching = fetchingMessageId !== null;
+
+  useEffect(() => {
+    const src = getWalkIntroVideo(defaultCompanionId);
+    setIntroComplete(!src);
+  }, [defaultCompanionId]);
+
+  useEffect(() => {
+    if (!introComplete) {
+      stopPlayer();
+    }
+  }, [introComplete, stopPlayer]);
 
   useEffect(() => {
     if (SIMULATION_ENABLED) return;
@@ -180,7 +195,7 @@ export const WalkListen = () => {
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
-    enabled: SIMULATION_ENABLED || hasAreaContent,
+    enabled: introComplete && (SIMULATION_ENABLED || hasAreaContent),
     lat,
     lng,
     companionId: defaultCompanionId,
@@ -260,10 +275,10 @@ export const WalkListen = () => {
 
   const initialSimTriggeredRef = useRef(false);
   useEffect(() => {
-    if (!SIMULATION_ENABLED || initialSimTriggeredRef.current) return;
+    if (!SIMULATION_ENABLED || !introComplete || initialSimTriggeredRef.current) return;
     initialSimTriggeredRef.current = true;
     void handleSimPointSelect(GONG_WANG_FU_FENCES[0].id);
-  }, []);
+  }, [introComplete]);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -335,6 +350,12 @@ export const WalkListen = () => {
   };
 
   return (
+    <>
+      {!introComplete && introVideoSrc && (
+        <WalkIntroVideo src={introVideoSrc} onComplete={() => setIntroComplete(true)} />
+      )}
+
+      {introComplete && (
     <div
       className="fixed left-1/2 z-10 flex w-full max-w-app -translate-x-1/2 flex-col overflow-hidden bg-[#ededed]"
       style={{
@@ -483,5 +504,7 @@ export const WalkListen = () => {
         })}
       </div>
     </div>
+      )}
+    </>
   );
 };

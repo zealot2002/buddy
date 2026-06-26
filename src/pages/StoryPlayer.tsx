@@ -343,7 +343,7 @@ export const StoryPlayer = () => {
                 duration: 180,
                 description: '断桥不断，肝肠寸断。白娘子与许仙的爱情故事...',
                 coverImage: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=west%20lake%20hangzhou%20broken%20bridge%20chinese%20traditional%20painting%20style%20beautiful%20scenery%20willow%20trees%20misty&image_size=landscape_16_9',
-                defaultCompanionId: 'lin-huiyin',
+                defaultCompanionId: 'su-dongpo',
                 tags: ['爱情', '传说', '西湖'],
                 narrators: []
               }} compact layout="scroll" />}

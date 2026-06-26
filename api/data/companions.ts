@@ -22,6 +22,14 @@ export interface Companion {
   storiesCount: number;
 }
 
+/** MVP 仅保留两位旅伴 */
+export const MVP_COMPANION_IDS = ['su-dongpo', 'sharp-elder'] as const;
+export type MvpCompanionId = (typeof MVP_COMPANION_IDS)[number];
+
+export function isMvpCompanionId(id: string): id is MvpCompanionId {
+  return (MVP_COMPANION_IDS as readonly string[]).includes(id);
+}
+
 export const companions: Companion[] = [
   {
     id: 'su-dongpo',
