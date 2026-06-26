@@ -1,12 +1,12 @@
 /** 稳定的封面与头像资源（均存 public/images/，禁止外链 SVG） */
 
 export const STORY_COVER_IMAGES: Record<string, string> = {
-  'west-lake-bridge': '/images/covers/west-lake-bridge.png',
-  'forbidden-city-hall': '/images/covers/forbidden-city-hall.png',
-  'suzhou-garden': '/images/covers/suzhou-garden.png',
-  'terracotta-army': '/images/covers/terracotta-army.png',
-  'summer-palace': '/images/covers/summer-palace.png',
-  'yueyang-tower': '/images/covers/yueyang-tower.png',
+  'west-lake-bridge': '/images/covers/west-lake-bridge.webp',
+  'forbidden-city-hall': '/images/covers/forbidden-city-hall.webp',
+  'suzhou-garden': '/images/covers/suzhou-garden.webp',
+  'terracotta-army': '/images/covers/terracotta-army.webp',
+  'summer-palace': '/images/covers/summer-palace.webp',
+  'yueyang-tower': '/images/covers/yueyang-tower.webp',
 };
 
 /** 旅伴头像：public/images/avatars/（MVP 两位，改图后递增 AVATAR_ASSET_VERSION） */
@@ -17,7 +17,7 @@ export const COMPANION_AVATARS: Record<string, string> = {
   'sharp-elder': '/images/avatars/sharp-elder.png',
 };
 
-export const DEFAULT_STORY_COVER = '/images/covers/west-lake-bridge.png';
+export const DEFAULT_STORY_COVER = '/images/covers/west-lake-bridge.webp';
 
 export const DEFAULT_AVATAR = COMPANION_AVATARS['su-dongpo'];
 

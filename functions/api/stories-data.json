@@ -11,7 +11,7 @@
       "distance": 120,
       "duration": 180,
       "description": "断桥不断，肝肠寸断。白娘子与许仙的爱情故事，从这里开始流传千年。",
-      "coverImage": "/images/covers/west-lake-bridge.png",
+      "coverImage": "/images/covers/west-lake-bridge.webp",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "爱情",
@@ -44,7 +44,7 @@
       "distance": 850,
       "duration": 180,
       "description": "走进紫禁城，在朱墙黄瓦间聆听六百年的人间冷暖与皇家往事。",
-      "coverImage": "/images/covers/forbidden-city-hall.png",
+      "coverImage": "/images/covers/forbidden-city-hall.webp",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "历史",
@@ -77,7 +77,7 @@
       "distance": 2300,
       "duration": 200,
       "description": "江南园林艺术的巅峰之作，一步一景，处处皆画。",
-      "coverImage": "/images/covers/suzhou-garden.png",
+      "coverImage": "/images/covers/suzhou-garden.webp",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "园林",
@@ -110,7 +110,7 @@
       "distance": 5400,
       "duration": 260,
       "description": "千古一帝秦始皇的地下军团，沉睡千年后重见天日。",
-      "coverImage": "/images/covers/terracotta-army.png",
+      "coverImage": "/images/covers/terracotta-army.webp",
       "defaultCompanionId": "sharp-elder",
       "tags": [
         "历史",
@@ -143,7 +143,7 @@
       "distance": 1500,
       "duration": 180,
       "description": "昆明湖畔，长廊画舫，在湖光山色间感受皇家园林的借景之美与时代往事。",
-      "coverImage": "/images/covers/summer-palace.png",
+      "coverImage": "/images/covers/summer-palace.webp",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "皇家",
@@ -176,7 +176,7 @@
       "distance": 8900,
       "duration": 220,
       "description": "范仲淹《岳阳楼记》的诞生地，\"先天下之忧而忧\"的情怀在此传颂。",
-      "coverImage": "/images/covers/yueyang-tower.png",
+      "coverImage": "/images/covers/yueyang-tower.webp",
       "defaultCompanionId": "su-dongpo",
       "tags": [
         "诗词",
@@ -203,7 +203,7 @@
     {
       "id": "su-dongpo",
       "name": "苏东坡",
-      "avatar": "/images/avatars/su-dongpo.png",
+      "avatar": "/images/avatars/su-dongpo.webp",
       "style": "豪放洒脱",
       "description": "北宋文坛领袖，豪放派诗词大家。他会用风趣幽默的方式，带你领略历史的诗意与豪情。",
       "persona": "苏轼，字子瞻，号东坡居士。北宋著名文学家、书法家、画家。性格旷达乐观，虽仕途坎坷但始终保持豁达心境。精通诗词、散文、书画，是中国文学史上的全才。讲述时喜欢引用诗词典故，语速偏慢，声音醇厚，带有文人的儒雅与豪迈。",
@@ -222,7 +222,7 @@
     {
       "id": "sharp-elder",
       "name": "毒舌老炮",
-      "avatar": "/images/avatars/sharp-elder.png",
+      "avatar": "/images/avatars/sharp-elder.webp",
       "style": "犀利幽默",
       "description": "一位见多识广的老炮儿，言辞犀利一针见血，用独特视角解读历史背后的故事。",
       "persona": "一位见多识广、性格直爽的北京老炮儿。说话犀利风趣，喜欢吐槽和揭秘，不爱说场面话。肚子里装着各种冷知识和历史真相，总能从别人想不到的角度看问题。虽然嘴上不饶人，但说的都是干货，听着过瘾还长见识。语速偏快，声音略带沧桑，节奏感强。",

@@ -353,10 +353,14 @@ export const WalkListen = () => {
 
   return (
     <div
-      className="fixed left-1/2 z-10 flex w-full max-w-app -translate-x-1/2 flex-col overflow-hidden bg-[#ededed]"
+      className="fixed left-1/2 z-10 flex w-full max-w-app -translate-x-1/2 flex-col overflow-hidden"
       style={{
         top: 0,
         bottom: 'calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))',
+        backgroundImage: 'url(/images/background/gong-wang-fu.webp)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
       }}
     >
       <header className="relative z-30 shrink-0 border-b border-black/5 bg-[#ededed] pt-safe">
@@ -457,7 +461,7 @@ export const WalkListen = () => {
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 bg-black/10"
       >
         {messages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
