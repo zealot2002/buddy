@@ -438,7 +438,7 @@ export const WalkListen = () => {
         {SIMULATION_ENABLED && (
           <div className="border-t border-black/5 px-3 py-2">
             <p className="mb-2 text-[11px] text-gray-500">模拟站点（恭王府动线）</p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
               {GONG_WANG_FU_FENCES.map((point) => (
                 <button
                   key={point.id}
@@ -451,7 +451,7 @@ export const WalkListen = () => {
                       : 'bg-white text-gray-600 ring-1 ring-black/5 active:bg-black/5',
                   )}
                 >
-                  {point.id.toUpperCase()}
+                  {point.label}
                 </button>
               ))}
             </div>
@@ -461,7 +461,7 @@ export const WalkListen = () => {
 
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 bg-black/10"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 bg-black/10 hide-scrollbar"
       >
         {messages.map((message) => {
           const timeLabel = formatBeijingTime(message.timestamp);
