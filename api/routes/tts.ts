@@ -1,27 +1,33 @@
-import express from 'express';
-import https from 'https';
+import express, { type Request, type Response } from 'express';
+import { getElevenLabsApiKey } from '../config/tts-config.js';
+import { synthesizeSpeechWithFallback } from '../data/tts-synthesize.js';
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-  const { text, lang = 'zh-CN' } = req.query;
-  
-  if (!text) {
-    return res.status(400).json({ error: 'Text parameter is required' });
+router.get('/', async (req: Request, res: Response) => {
+  const text = req.query.text as string | undefined;
+  const companionId = req.query.companionId as string | undefined;
+  const lang = (req.query.lang as string) || 'zh-CN';
+
+  if (!text?.trim()) {
+    res.status(400).json({ error: 'Text parameter is required' });
+    return;
   }
 
-  const encodedText = encodeURIComponent(text as string);
-  const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
+  if (!getElevenLabsApiKey()) {
+    console.error('joyjoy ELEVENLABS_API_KEY missing');
+  }
 
-  https.get(googleTtsUrl, (response) => {
-    res.setHeader('Content-Type', 'audio/mp3');
+  try {
+    const result = await synthesizeSpeechWithFallback({ text, companionId }, lang);
+    res.setHeader('Content-Type', result.contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    
-    response.pipe(res);
-  }).on('error', (err) => {
-    console.error('TTS request error:', err);
+    res.setHeader('X-TTS-Provider', result.provider);
+    res.send(Buffer.from(result.buffer));
+  } catch (error) {
+    console.error('joyjoy TTS request error:', error);
     res.status(500).json({ error: 'Failed to generate audio' });
-  });
+  }
 });
 
 export default router;

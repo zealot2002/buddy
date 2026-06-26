@@ -3,11 +3,13 @@
  */
 import { SPEECH_CONFIG, type SpeechConfig } from './speech-config.js';
 import { WALK_LISTEN_CONFIG, type WalkListenConfig } from './walk-config.js';
+import { TTS_PUBLIC_CONFIG, type TtsPublicConfig } from './tts-config.js';
 
 export interface AppConfig {
   version: number;
   walk: WalkListenConfig;
   speech: SpeechConfig;
+  tts: TtsPublicConfig;
 }
 
 /** 当前生效的全局配置快照（同步至 Cloudflare Functions JSON） */
@@ -15,6 +17,7 @@ export const APP_CONFIG: AppConfig = {
   version: 1,
   walk: WALK_LISTEN_CONFIG,
   speech: SPEECH_CONFIG,
+  tts: TTS_PUBLIC_CONFIG,
 };
 
 export {
@@ -27,3 +30,10 @@ export {
 } from './walk-config.js';
 
 export { SPEECH_CONFIG, estimateSpeechDurationFromConfig, type SpeechConfig } from './speech-config.js';
+export {
+  TTS_PUBLIC_CONFIG,
+  getElevenLabsApiKey,
+  resolveElevenLabsVoiceId,
+  resolveElevenLabsVoiceSettings,
+  type TtsPublicConfig,
+} from './tts-config.js';

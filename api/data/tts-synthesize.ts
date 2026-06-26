@@ -1,83 +1,100 @@
-import { getTtsProfile, resolveTtsProfileId, type TtsVoiceProfile } from '../config/tts-config.js';
-
-const EDGE_OUTPUT_FORMAT = 'audio-24khz-48kbitrate-mono-mp3';
-const EDGE_USER_AGENT =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0';
-
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/** 在标点处插入 SSML break，增强抑扬顿挫 */
-export function applyCadenceBreaks(text: string, profile: TtsVoiceProfile): string {
-  const escaped = escapeXml(text.trim());
-  return escaped
-    .replace(/([。！？；])/g, `$1<break time="${profile.sentenceBreakMs}ms"/>`)
-    .replace(/([，、])/g, `$1<break time="${profile.commaBreakMs}ms"/>`)
-    .replace(/([——…])/g, `$1<break time="${Math.round((profile.sentenceBreakMs + profile.commaBreakMs) / 2)}ms"/>`);
-}
-
-export function buildSsml(text: string, profile: TtsVoiceProfile): string {
-  const body = applyCadenceBreaks(text, profile);
-  return [
-    '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="zh-CN">',
-    `<voice name="${profile.voice}">`,
-    `<prosody rate="${profile.rate}" pitch="${profile.pitch}">${body}</prosody>`,
-    '</voice>',
-    '</speak>',
-  ].join('');
-}
+import {
+  getElevenLabsApiKey,
+  resolveElevenLabsVoiceId,
+  resolveElevenLabsVoiceSettings,
+  TTS_PUBLIC_CONFIG,
+} from '../config/tts-config.js';
 
 export interface SynthesizeSpeechOptions {
   text: string;
   companionId?: string | null;
   profileId?: string | null;
-  edgeClientToken?: string;
+  apiKey?: string;
 }
 
-export async function synthesizeSpeech(options: SynthesizeSpeechOptions): Promise<Response> {
-  const { text, companionId, profileId, edgeClientToken } = options;
-  const profile = getTtsProfile(profileId ?? resolveTtsProfileId(companionId));
-  const token = edgeClientToken ?? '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-  const ssml = buildSsml(text, profile);
-  const url = `https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${token}`;
-
-  return fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/ssml+xml',
-      'X-Microsoft-OutputFormat': EDGE_OUTPUT_FORMAT,
-      'User-Agent': EDGE_USER_AGENT,
-    },
-    body: ssml,
-  });
+export interface SynthesizeSpeechResult {
+  buffer: ArrayBuffer;
+  contentType: string;
+  provider: 'elevenlabs' | 'google';
 }
 
-/** Google TTS 兜底（无韵律控制） */
+const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
+
+/** Google TTS 兜底（无韵律控制，仅开发/故障降级） */
 export async function synthesizeSpeechFallback(text: string, lang = 'zh-CN'): Promise<Response> {
   const encodedText = encodeURIComponent(text);
   const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
   return fetch(googleTtsUrl);
 }
 
-export async function synthesizeSpeechWithFallback(
+export async function synthesizeElevenLabsSpeech(
   options: SynthesizeSpeechOptions,
-): Promise<{ response: Response; provider: 'edge' | 'google' }> {
-  try {
-    const edgeResponse = await synthesizeSpeech(options);
-    if (edgeResponse.ok) {
-      return { response: edgeResponse, provider: 'edge' };
-    }
-    console.error('joyjoy edge TTS failed:', edgeResponse.status);
-  } catch (error) {
-    console.error('joyjoy edge TTS error:', error);
+): Promise<Response> {
+  const { text, companionId, profileId, apiKey } = options;
+  const resolvedKey = apiKey ?? getElevenLabsApiKey();
+  if (!resolvedKey) {
+    throw new Error('ELEVENLABS_API_KEY is not configured');
   }
 
-  const fallback = await synthesizeSpeechFallback(options.text);
-  return { response: fallback, provider: 'google' };
+  const voiceId = resolveElevenLabsVoiceId(profileId ?? companionId);
+  const voiceSettings = resolveElevenLabsVoiceSettings(companionId);
+  const { speed, ...settings } = voiceSettings;
+
+  const url = new URL(`${ELEVENLABS_BASE}/text-to-speech/${voiceId}`);
+  url.searchParams.set('output_format', TTS_PUBLIC_CONFIG.outputFormat);
+
+  return fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      'xi-api-key': resolvedKey,
+      'Content-Type': 'application/json',
+      Accept: 'audio/mpeg',
+    },
+    body: JSON.stringify({
+      text: text.trim(),
+      model_id: TTS_PUBLIC_CONFIG.modelId,
+      voice_settings: settings,
+      speed,
+    }),
+  });
+}
+
+export async function synthesizeSpeechWithFallback(
+  options: SynthesizeSpeechOptions,
+  lang = 'zh-CN',
+): Promise<SynthesizeSpeechResult> {
+  try {
+    const elevenResponse = await synthesizeElevenLabsSpeech(options);
+    if (elevenResponse.ok) {
+      return {
+        buffer: await elevenResponse.arrayBuffer(),
+        contentType: elevenResponse.headers.get('Content-Type') || 'audio/mpeg',
+        provider: 'elevenlabs',
+      };
+    }
+    console.error('joyjoy ElevenLabs TTS failed:', elevenResponse.status, await elevenResponse.text());
+  } catch (error) {
+    console.error('joyjoy ElevenLabs TTS error:', error);
+  }
+
+  const fallback = await synthesizeSpeechFallback(options.text, lang);
+  if (!fallback.ok) {
+    throw new Error(`TTS fallback failed: ${fallback.status}`);
+  }
+
+  return {
+    buffer: await fallback.arrayBuffer(),
+    contentType: fallback.headers.get('Content-Type') || 'audio/mpeg',
+    provider: 'google',
+  };
+}
+
+/** @deprecated 旧 Edge SSML 路径，保留导出以免外部引用报错 */
+export function applyCadenceBreaks(text: string): string {
+  return text.trim();
+}
+
+/** @deprecated */
+export function buildSsml(text: string): string {
+  return text.trim();
 }

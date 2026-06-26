@@ -348,8 +348,16 @@ npm run lint
 | `/api/companions/:id` | GET | 获取单个旅伴 |
 | `/api/routes` | GET | 获取所有路线 |
 | `/api/routes/:id` | GET | 获取单个路线 |
-| `/api/tts` | GET | 语音合成（`?text=&lang=`） |
+| `/api/tts` | GET | 语音合成（`?text=&companionId=&lang=`，ElevenLabs） |
 | `/api/health` | GET | 健康检查 |
+
+### ElevenLabs TTS 配置
+
+1. 复制 `.env.example` 为 `.env`，填入 `ELEVENLABS_API_KEY`
+2. 本地开发：`npm run dev`（Express 读 `.env`）
+3. Cloudflare 生产：`wrangler secret put ELEVENLABS_API_KEY`
+4. 旅伴默认音色见 `api/data/companions.ts` 的 `voiceId`（ElevenLabs voice_id）；可用 `ELEVENLABS_VOICE_SU_DONGPO` 等环境变量覆盖
+5. 模型默认 `eleven_multilingual_v2`（中文）；ElevenLabs 失败时自动降级 Google TTS
 
 ---
 

@@ -125,7 +125,7 @@ const startContentAudio = (
   stopCurrentAudio();
 
   const normalizedId = normalizeCompanionId(companionId);
-  const audioUrl = `/api/tts?text=${encodeURIComponent(content)}&lang=zh-CN`;
+  const audioUrl = `/api/tts?text=${encodeURIComponent(content)}&companionId=${encodeURIComponent(normalizedId)}&lang=zh-CN`;
 
   audioElement = new Audio(audioUrl);
   audioElement.volume = get().volume;
@@ -165,7 +165,7 @@ const startStoryAudio = (
   const narrator = resolveNarratorScript(rawNarrator);
   const fallbackDuration = getFallbackDuration(narrator, story);
   const audioUrl = narrator.audioUrl
-    || `/api/tts?text=${encodeURIComponent(narrator.content)}&lang=zh-CN`;
+    || `/api/tts?text=${encodeURIComponent(narrator.content)}&companionId=${encodeURIComponent(normalizedId)}&lang=zh-CN`;
 
   audioElement = new Audio(audioUrl);
   audioElement.volume = get().volume;

@@ -1,8 +1,9 @@
 import { stories } from './data/stories.js';
 import { companions } from './data/companions.js';
+import { synthesizeSpeechWithFallback } from './data/tts-synthesize.js';
 
 export interface Env {
-  // 可以在这里添加绑定的变量和 KV 命名空间
+  ELEVENLABS_API_KEY?: string;
 }
 
 export default {
@@ -81,29 +82,28 @@ export default {
       if (method === 'GET') {
         const text = url.searchParams.get('text');
         const lang = url.searchParams.get('lang') || 'zh-CN';
-        
-        if (!text) {
+        const companionId = url.searchParams.get('companionId') || 'su-dongpo';
+
+        if (!text?.trim()) {
           return Response.json({ error: 'Text parameter is required' }, { status: 400, headers: corsHeaders });
         }
 
-        const encodedText = encodeURIComponent(text);
-        const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
-        
         try {
-          const response = await fetch(googleTtsUrl);
-          if (!response.ok) {
-            return Response.json({ error: 'Failed to generate audio' }, { status: 500, headers: corsHeaders });
-          }
-          
-          const audioBuffer = await response.arrayBuffer();
-          return new Response(audioBuffer, {
+          const result = await synthesizeSpeechWithFallback(
+            { text, companionId, apiKey: env.ELEVENLABS_API_KEY },
+            lang,
+          );
+
+          return new Response(result.buffer, {
             headers: {
               ...corsHeaders,
-              'Content-Type': 'audio/mp3',
+              'Content-Type': result.contentType,
               'Cache-Control': 'public, max-age=86400',
+              'X-TTS-Provider': result.provider,
             },
           });
         } catch (e) {
+          console.error('joyjoy TTS service error:', e);
           return Response.json({ error: 'TTS service unavailable' }, { status: 500, headers: corsHeaders });
         }
       }
