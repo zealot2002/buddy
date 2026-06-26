@@ -16,6 +16,7 @@ import { useWalkChatStore, type WalkChatMessage } from '../store/walk-chat';
 import { useWalkPlayedJokesStore } from '../store/walk-played-jokes';
 import { getCompanionAvatar, getWalkIntroVideo } from '../../api/data/media.js';
 import { WalkIntroVideo } from '../components/WalkIntroVideo';
+import { useWalkIntroPlayedStore } from '../store/walk-intro-played';
 import { estimateSpeechDuration } from '../../api/data/narrations.js';
 import { cn, formatBeijingTime } from '@/lib/utils';
 
@@ -25,6 +26,18 @@ interface WalkNearbyStatus {
   distanceMeters: number;
   inside: boolean;
   radius: number;
+}
+
+const COMPANION_HINT_VISIBLE_MS = 2800;
+const COMPANION_HINT_FADE_MS = 700;
+
+function shouldSkipWalkIntro(
+  companionId: string,
+  introVideoSrc: string | undefined,
+  shouldPlayIntro: (id: string) => boolean,
+): boolean {
+  if (!introVideoSrc) return true;
+  return !shouldPlayIntro(companionId);
 }
 
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
@@ -48,9 +61,14 @@ export const WalkListen = () => {
   const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
 
 
+  const shouldPlayIntro = useWalkIntroPlayedStore((state) => state.shouldPlayIntro);
+  const markIntroPlayed = useWalkIntroPlayedStore((state) => state.markIntroPlayed);
+
   const introVideoSrc = getWalkIntroVideo(defaultCompanionId);
-  const [introComplete, setIntroComplete] = useState(!introVideoSrc);
-  const [showCompanionHint, setShowCompanionHint] = useState(false);
+  const [introComplete, setIntroComplete] = useState(() =>
+    shouldSkipWalkIntro(defaultCompanionId, introVideoSrc, useWalkIntroPlayedStore.getState().shouldPlayIntro),
+  );
+  const [companionHintPhase, setCompanionHintPhase] = useState<'off' | 'in' | 'out'>('off');
 
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
@@ -88,21 +106,33 @@ export const WalkListen = () => {
 
   useEffect(() => {
     const src = getWalkIntroVideo(defaultCompanionId);
-    setIntroComplete(!src);
-  }, [defaultCompanionId]);
+    setIntroComplete(shouldSkipWalkIntro(defaultCompanionId, src, shouldPlayIntro));
+  }, [defaultCompanionId, shouldPlayIntro]);
+
+  const handleIntroComplete = useCallback(() => {
+    markIntroPlayed(defaultCompanionId);
+    setIntroComplete(true);
+  }, [defaultCompanionId, markIntroPlayed]);
 
   useEffect(() => {
     if (!introComplete) {
       stopPlayer();
-      setShowCompanionHint(false);
+      setCompanionHintPhase('off');
     }
   }, [introComplete, stopPlayer]);
 
   useEffect(() => {
     if (!introComplete) return undefined;
-    setShowCompanionHint(true);
-    const timer = window.setTimeout(() => setShowCompanionHint(false), 3500);
-    return () => window.clearTimeout(timer);
+    setCompanionHintPhase('in');
+    const fadeTimer = window.setTimeout(() => setCompanionHintPhase('out'), COMPANION_HINT_VISIBLE_MS);
+    const hideTimer = window.setTimeout(
+      () => setCompanionHintPhase('off'),
+      COMPANION_HINT_VISIBLE_MS + COMPANION_HINT_FADE_MS,
+    );
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(hideTimer);
+    };
   }, [introComplete]);
 
   useEffect(() => {
@@ -361,7 +391,7 @@ export const WalkListen = () => {
   return (
     <>
       {!introComplete && introVideoSrc && (
-        <WalkIntroVideo src={introVideoSrc} onComplete={() => setIntroComplete(true)} />
+        <WalkIntroVideo src={introVideoSrc} onComplete={handleIntroComplete} />
       )}
 
       {introComplete && (
@@ -392,7 +422,23 @@ export const WalkListen = () => {
             </p>
           </div>
 
-          <div className="flex max-w-[40%] shrink-0 flex-col items-end gap-1">
+          <div className="relative flex max-w-[40%] shrink-0 flex-col items-end">
+            {companionHintPhase !== 'off' && (
+              <div
+                className={cn(
+                  'pointer-events-none absolute right-0 top-[calc(100%+6px)] z-40 whitespace-nowrap rounded-lg bg-gray-900/88 px-2.5 py-1.5 text-[11px] text-white shadow-md backdrop-blur-sm transition-opacity ease-out',
+                  companionHintPhase === 'in' ? 'opacity-100' : 'opacity-0',
+                )}
+                style={{ transitionDuration: `${COMPANION_HINT_FADE_MS}ms` }}
+              >
+                我的页可改默认旅伴
+              </div>
+            )}
+            {isFetching && (
+              <div className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-40 whitespace-nowrap rounded-lg bg-white/95 px-2.5 py-1.5 text-[11px] text-gray-500 shadow-md ring-1 ring-black/5">
+                正在组织语言…
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <div className="relative shrink-0">
                 <div
@@ -421,15 +467,8 @@ export const WalkListen = () => {
                 )}
               </div>
 
-              <div className="min-w-0 text-right">
+              <div className="flex h-10 min-w-0 items-center justify-end text-right">
                 <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
-                {isFetching ? (
-                  <p className="truncate text-[11px] text-gray-500">正在组织语言…</p>
-                ) : showCompanionHint ? (
-                  <p className="truncate text-[11px] text-gray-400 transition-opacity duration-500">
-                    我的页可改默认旅伴
-                  </p>
-                ) : null}
               </div>
             </div>
           </div>
