@@ -1,4 +1,4 @@
-# AI旅伴 - 沉浸式讲解 App 原型
+# 同游 - 沉浸式讲解 App 原型
 
 一款让用户在旅途中一键召唤 AI 旅伴讲故事的沉浸式讲解应用。
 
@@ -8,7 +8,7 @@
 
 | 项目信息 | 详情 |
 |---------|------|
-| 应用名称 | AI旅伴 |
+| 应用名称 | 同游 |
 | 项目类型 | 移动端 Web App 原型 |
 | 技术栈 | React 18 + TypeScript + Vite 6 + TailwindCSS 3 |
 | 部署方式 | Cloudflare Pages + Pages Functions |

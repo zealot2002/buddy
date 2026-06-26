@@ -33,7 +33,7 @@ export const Profile = () => {
                 <Users className="w-7 h-7 sm:w-10 sm:h-10 text-gold" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="font-serif text-lg sm:text-xl font-bold text-light-blue">AI旅伴</h2>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-light-blue">同游</h2>
                 <p className="text-gray-400 text-xs sm:text-sm mt-1">探索世界，聆听故事</p>
               </div>
               <button type="button" className="gold-outline-button text-xs sm:text-sm px-3 sm:px-4 py-2 shrink-0 w-auto">
@@ -132,9 +132,9 @@ export const Profile = () => {
 
         <section className="mb-4">
           <div className="bg-gradient-to-r from-card-bg to-card-border rounded-2xl p-4 sm:p-5 border border-card-border">
-            <h3 className="font-serif font-bold text-light-blue mb-2">关于AI旅伴</h3>
+            <h3 className="font-serif font-bold text-light-blue mb-2">关于同游</h3>
             <p className="text-sm text-gray-400 leading-relaxed">
-              AI旅伴是一款沉浸式音频导览应用：发现页浏览城市故事，边走边听像聊天一样听旅伴感言，还可编排专属连播。
+              同游是一款沉浸式音频导览应用：发现页浏览城市故事，边走边听像聊天一样听旅伴感言，还可编排专属连播。
             </p>
             <p className="text-xs text-gray-600 mt-3">版本 1.0.0</p>
           </div>

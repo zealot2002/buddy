@@ -17,7 +17,7 @@ export const Header = () => {
           <div className="w-8 h-8 rounded-full bg-gradient-to-r from-gold to-amber flex items-center justify-center shrink-0">
             <span className="text-deep-navy font-serif font-bold text-sm">听</span>
           </div>
-          <span className="font-serif text-lg sm:text-xl font-bold text-gradient truncate">AI旅伴</span>
+          <span className="font-serif text-lg sm:text-xl font-bold text-gradient truncate">同游</span>
         </button>
         
         <button 
