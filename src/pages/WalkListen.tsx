@@ -50,6 +50,7 @@ export const WalkListen = () => {
 
   const introVideoSrc = getWalkIntroVideo(defaultCompanionId);
   const [introComplete, setIntroComplete] = useState(!introVideoSrc);
+  const [showCompanionHint, setShowCompanionHint] = useState(false);
 
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
@@ -93,8 +94,16 @@ export const WalkListen = () => {
   useEffect(() => {
     if (!introComplete) {
       stopPlayer();
+      setShowCompanionHint(false);
     }
   }, [introComplete, stopPlayer]);
+
+  useEffect(() => {
+    if (!introComplete) return undefined;
+    setShowCompanionHint(true);
+    const timer = window.setTimeout(() => setShowCompanionHint(false), 3500);
+    return () => window.clearTimeout(timer);
+  }, [introComplete]);
 
   useEffect(() => {
     if (SIMULATION_ENABLED) return;
@@ -416,9 +425,11 @@ export const WalkListen = () => {
                 <p className="truncate text-sm font-medium text-gray-900">{companion?.name || '旅伴'}</p>
                 {isFetching ? (
                   <p className="truncate text-[11px] text-gray-500">正在组织语言…</p>
-                ) : (
-                  <p className="truncate text-[11px] text-gray-400">我的页可改默认旅伴</p>
-                )}
+                ) : showCompanionHint ? (
+                  <p className="truncate text-[11px] text-gray-400 transition-opacity duration-500">
+                    我的页可改默认旅伴
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
