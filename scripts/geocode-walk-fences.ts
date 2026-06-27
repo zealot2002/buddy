@@ -1,5 +1,5 @@
 /**
- * 围栏坐标工具 — 恭王府 MVP
+ * 围栏坐标工具 — 恭王府 MVP（语料来自 D1 seeds）
  *
  * 用法：
  *   npm run geocode:fences -- convert --from gcj02 --lat 39.937 --lng 116.386
@@ -7,9 +7,8 @@
  *   npm run geocode:fences -- list
  */
 import { toWgs84, type CoordSystem } from '../api/data/coord-utils.js';
-import { GONG_WANG_FU_AREA, GONG_WANG_FU_FENCES } from '../api/data/walk-areas.js';
 import { haversineMeters } from '../api/data/walk-snippets.js';
-import { walkGetNearbyStatus } from '../api/data/walk-service.js';
+import { walkGetFences, walkGetNearbyStatus } from '../api/data/walk-service.js';
 
 function parseArgs(argv: string[]) {
   const args = argv.slice(2);
@@ -29,14 +28,10 @@ function printHelp() {
 
 命令:
   convert --from gcj02|bd09 --lat <纬度> --lng <经度>
-  validate --lat <纬度> --lng <经度>   查看距恭王府各围栏距离
-  list                                 列出恭王府围栏 WGS84
+  validate --lat <纬度> --lng <经度>
+  list
 
-注意:
-  - 浏览器 Geolocation → WGS84
-  - 高德/腾讯拾取 → GCJ-02，需 convert --from gcj02
-  - 百度拾取 → BD-09，需 convert --from bd09
-  - 语料坐标写在 api/data/gong-wang-fu.json`);
+语料坐标在 seeds/*.sql，改后 npm run db:seed:local -- --force`);
 }
 
 function cmdConvert(flags: Record<string, string>) {
@@ -47,12 +42,8 @@ function cmdConvert(flags: Record<string, string>) {
     console.error('请提供 --lat 和 --lng');
     process.exit(1);
   }
-  if (from === 'wgs84') {
-    console.log('已是 WGS84，无需转换:', { lat, lng });
-    return;
-  }
-  const [wgsLng, wgsLat] = toWgs84(lng, lat, from);
-  console.log('WGS84（写入围栏 JSON）:', { lat: wgsLat, lng: wgsLng });
+  const wgs = toWgs84(lat, lng, from);
+  console.log(JSON.stringify({ from, input: { lat, lng }, wgs84: wgs }, null, 2));
 }
 
 async function cmdValidate(flags: Record<string, string>) {
@@ -63,11 +54,7 @@ async function cmdValidate(flags: Record<string, string>) {
     process.exit(1);
   }
 
-  const sim = GONG_WANG_FU_AREA.simulation;
   console.log('joyjoy 恭王府围栏校验 @', lat, lng);
-  if (sim) {
-    console.log('模拟基准点:', { lat: sim.baseLat, lng: sim.baseLng });
-  }
   console.log('');
 
   const nearby = await walkGetNearbyStatus(lat, lng, 20);
@@ -77,21 +64,14 @@ async function cmdValidate(flags: Record<string, string>) {
       `${tag}  ${item.label ?? item.id}  距离 ${item.distanceMeters}m / 半径 ${item.radius}m  [${item.id}]`,
     );
   }
-
-  if (sim) {
-    const baseDist = Math.round(haversineMeters(lat, lng, sim.baseLat, sim.baseLng));
-    console.log('');
-    console.log(`距模拟基准点 ${baseDist}m`);
-  }
 }
 
-function cmdList() {
+async function cmdList() {
+  const fences = await walkGetFences();
   console.log('恭王府围栏（WGS84）:\n');
-  for (const fence of GONG_WANG_FU_FENCES) {
+  for (const fence of fences) {
     console.log(`${fence.label} [${fence.id}]`);
-    console.log(
-      `  lat: ${fence.location.lat}, lng: ${fence.location.lng}, radius: ${fence.location.radiusMeters}m`,
-    );
+    console.log(`  lat: ${fence.lat}, lng: ${fence.lng}, radius: ${fence.radiusMeters}m`);
     if (fence.triggerHint) {
       console.log(`  hint: ${fence.triggerHint}`);
     }
@@ -110,7 +90,7 @@ const { command, flags } = parseArgs(process.argv);
       await cmdValidate(flags);
       break;
     case 'list':
-      cmdList();
+      await cmdList();
       break;
     default:
       printHelp();

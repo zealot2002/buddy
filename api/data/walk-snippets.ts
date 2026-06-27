@@ -11,8 +11,6 @@ export type {
   WalkJoke,
 } from './walk-area-types.js';
 
-export { GONG_WANG_FU_AREA, GONG_WANG_FU_FENCES, WALK_AREAS } from './walk-areas.js';
-
 export interface WalkSnippetMeta {
   id: string;
   label?: string;

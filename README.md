@@ -142,9 +142,9 @@ Legacy 路由，功能与 Discover 类似，保留兼容。
 │   ├── server.ts                 # Express 服务器启动
 │   ├── index.ts                  # API 入口
 │   ├── data/                     # 模拟数据
-│   │   ├── gong-wang-fu.json     # 恭王府语料（景区→围栏→段子→幕）
-│   │   ├── walk-areas.ts         # 加载景区 JSON
-│   │   ├── walk-snippets.ts      # 围栏索引与 play 解析
+│   │   ├── walk-service.ts       # 边走边听 D1 查询（Express / CF 共用）
+│   │   ├── walk-area-types.ts    # 景区 / 围栏 / 段子类型
+│   │   ├── walk-snippets.ts      # 地理计算（haversine）
 │   │   ├── media.ts              # 封面 / 头像 / 出场视频路径
 │   │   ├── tts-synthesize.ts     # ElevenLabs 合成
 │   │   ├── stories.ts            # 城市故事数据
@@ -153,6 +153,8 @@ Legacy 路由，功能与 Discover 类似，保留兼容。
 │   │   ├── walk-config.ts        # 围栏半径、触发冷却、模拟开关
 │   │   ├── speech-config.ts      # TTS 时长估算
 │   │   └── tts-config.ts         # ElevenLabs voice / model
+│   ├── db/
+│   │   └── local-walk-db.ts      # 本地 SQLite（.data/walk.sqlite）
 │   ├── routes/                   # API 路由
 │   │   ├── stories.ts            # 故事 API
 │   │   ├── companions.ts         # 旅伴 API
@@ -170,9 +172,14 @@ Legacy 路由，功能与 Discover 类似，保留兼容。
 │   │   └── covers/               # 故事封面
 │   ├── videos/                   # 边走边听出场视频（.mp4）
 │   └── favicon.svg
+├── migrations/
+│   └── 0001_walk_content.sql     # D1 表结构
+├── seeds/
+│   └── 0001_gong_wang_fu.sql     # 恭王府语料（唯一数据源）
 ├── scripts/
-│   ├── sync-functions-data.ts    # 同步 API 数据至 Functions
-│   └── geocode-walk-fences.ts    # 恭王府围栏坐标工具
+│   ├── sync-functions-data.ts    # 同步 stories/companions 至 Functions
+│   ├── seed-walk-from-sql.ts     # 本地灌库（读 seeds/*.sql）
+│   └── geocode-walk-fences.ts    # 围栏坐标工具
 ├── src/                          # 前端代码
 │   ├── components/
 │   │   ├── Header.tsx            # 顶部栏（城市故事页）
@@ -306,11 +313,10 @@ npm run sync:functions-data   # stories / companions / 配置 → functions（wa
 npm run db:setup:local
 
 # Cloudflare 生产（首次需 wrangler d1 create buddy-walk 并更新 wrangler.toml database_id）
-npm run db:migrate:remote
-npm run db:export-sql && npm run db:seed:remote
+npm run db:setup:remote
 ```
 
-语料种子源仍为 `api/data/gong-wang-fu.json`（`byCompanion` 结构）；改 JSON 后 `--force` 重 seed。
+语料唯一数据源：`seeds/0001_gong_wang_fu.sql`。改 SQL 后本地 `npm run db:seed:local -- --force`，生产 `npm run db:seed:remote`。
 
 ### 本地调试（边走边听）
 
@@ -669,9 +675,8 @@ interface WalkArea {
 interface WalkFence {
   id: string;
   label: string;
-  primaryCompanionId: string;
   location: { lat: number; lng: number; radiusMeters: number };
-  jokes: WalkJoke[];             // 进围栏随机抽 1 个
+  byCompanion: Record<string, { jokes: WalkJoke[] }>;  // 每位旅伴独立段子池
 }
 
 interface WalkJoke {
@@ -687,7 +692,7 @@ interface WalkAct {
 }
 ```
 
-语料文件：`api/data/gong-wang-fu.json`（一景区一 JSON）。
+语料文件：`seeds/0001_gong_wang_fu.sql`（一景区一 seed SQL，运行时读 D1 / 本地 SQLite）。
 
 ---
 

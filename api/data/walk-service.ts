@@ -4,9 +4,10 @@ import {
   isWalkDbSeeded,
   runWalkMigrations,
 } from '../db/local-walk-db.js';
-import { seedWalkContentFromJson } from '../../scripts/seed-walk-d1.js';
+import { seedWalkFromSql } from '../../scripts/seed-walk-from-sql.js';
 import {
   findActiveFence,
+  getFencesByArea,
   getNearbyWalkMetas,
   getNearbyWalkStatus,
   resolveWalkAutoPlay,
@@ -20,7 +21,7 @@ async function ensureReady() {
     readyPromise = (async () => {
       runWalkMigrations();
       if (!isWalkDbSeeded()) {
-        seedWalkContentFromJson();
+        seedWalkFromSql();
       }
     })();
   }
@@ -33,6 +34,11 @@ function getDb() {
 
 function getSpeechConfig() {
   return APP_CONFIG.speech;
+}
+
+export async function walkGetFences(areaId = 'gong-wang-fu') {
+  await ensureReady();
+  return getFencesByArea(getDb(), areaId);
 }
 
 export async function walkGetNearbyMetas(lat: number, lng: number, limit?: number) {

@@ -12,7 +12,7 @@
 |------|----------|
 | 景区动线上「到点即播」比主动点读更有沉浸感 | 围栏自动触发 + 第一幕钩子 |
 | 毒舌老炮 × 苏轼双人设能拉高停留与分享 | 默认旅伴在「我的」页设置，边走边听统一音色 |
-| 恭王府 12 站语料密度足够支撑一次完整游览 | 每站 2 段子 × 1～3 幕 |
+| 恭王府 10 站语料密度足够支撑一次完整游览 | 每站 2 段子 × 1～3 幕 |
 | 产品形态值得继续投入运营与真 GPS | **先模拟围栏**，内容迭代稳定后再标定 WGS84 |
 
 **MVP 范围：** 单景区（恭王府）、**双旅伴**（苏东坡 / 毒舌老炮）、模拟选站、localStorage 去重、ElevenLabs 实时 TTS。
@@ -22,7 +22,7 @@
 1. **已播段子不得重复自动推送** — 用户在同一围栏听过的段子 id 持久化记录；再次进围栏只从未播池随机。见 [§4.2](#42-随机段子与去重规则)。
 2. **进围栏 = 轻，续读 = 深** — 自动只播 `acts[0]`；用户点「继续说」才展开 2、3 幕。
 3. **一段子一卡片，多幕卡片内切** — 聊天列表按**段子**追加行（`addMessage`）；同一段子内的多幕用「继续说 / 上一幕」在卡片内切换（`updateMessage`）。
-4. **语料先行、存储后置** — MVP 用 JSON 文件 + `sync:functions-data`；不上 D1，降低内容与工程耦合。
+4. **语料 = SQL，运行时 = D1** — 改稿只改 `seeds/*.sql`，无 JSON 中转；本地 `.data/walk.sqlite`，生产 Cloudflare D1。
 
 ### 0.3 内容模型演进（为何是 景区 → 围栏 → 段子 → 幕）
 
@@ -37,8 +37,8 @@
 **好处：**
 
 - 运营按「站 × 段子 × 幕」写稿，与动线一一对应。
-- 随机池在 `fence.byCompanion[companionId].jokes[]` 上，每位旅伴独立维护。
-- 一景区一 JSON，新增景区 = 新文件 + 注册，不拆围栏文件。
+- 随机池在 `byCompanion[companionId].jokes[]` 上，每位旅伴独立维护（D1 表 `walk_jokes` + `companion_id`）。
+- 一景区一 seed SQL（`seeds/{area-id}.sql`），新增景区 = 新 seed 文件 + re-seed。
 
 ### 0.4 阶段规划（Roadmap）
 
@@ -77,7 +77,7 @@ flowchart LR
 ## 1. 内容层级
 
 ```
-景区 (WalkArea)          一景区一 JSON 文件
+景区 (WalkArea)          一景区一 seed SQL（`seeds/*.sql`）
  └── 围栏 (WalkFence)    n 个，有 GPS + 半径
       └── 旅伴 (byCompanion)  每位旅伴独立段子池
            └── 段子 (WalkJoke) n 个，进围栏时随机抽 1 个（从未播池）
@@ -86,7 +86,7 @@ flowchart LR
 
 | 层级 | 说明 | 触发方式 |
 |------|------|----------|
-| **景区** | 如恭王府；对应 `api/data/{area-id}.json` | — |
+| **景区** | 如恭王府；对应 `walk_areas` 行 + `seeds/{area-id}.sql` | — |
 | **围栏** | 动线上的一个点位（如「蝠池」） | GPS 进入半径 / 模拟选站 |
 | **段子** | 同一围栏下的独立叙事单元 | **进围栏自动随机 1 个未播段子**，只播第 1 幕 |
 | **幕** | 段子内的分段文案 | 用户点 **「继续说」** 才播 2、3 幕 |
@@ -100,87 +100,48 @@ flowchart LR
 
 ---
 
-## 2. 语料存储（Cloudflare D1）
+## 2. 语料存储（Cloudflare D1 + SQL seeds）
 
 ### 2.1 架构
 
 | 层级 | 存储 | 说明 |
 |------|------|------|
-| **运行时** | Cloudflare D1（生产）/ `.data/walk.sqlite`（本地 Express） | 围栏、段子、幕的关联查询 |
-| **种子源** | `api/data/gong-wang-fu.json` | 按 `byCompanion` 组织，导入 D1 后仍可手改 JSON 再 seed |
-| **客户端模拟条** | `walk-areas.ts` 读 JSON 围栏元数据 | 仅 id / label / 坐标，不含段子正文 |
+| **Schema** | `migrations/0001_walk_content.sql` | 表结构 |
+| **语料（唯一数据源）** | `seeds/0001_gong_wang_fu.sql` | 恭王府 10 围栏 × 2 旅伴 × 2 分支 |
+| **运行时** | D1（生产）/ `.data/walk.sqlite`（本地） | API 读库 |
+| **客户端模拟条** | `GET /api/walk/fences` | 围栏 id / label / 坐标 |
 
-**表结构**（见 `migrations/0001_walk_content.sql`）：
+**无 JSON 中转。** 改文案 = 改 SQL → re-seed。
 
 ```
 walk_areas → walk_fences → walk_jokes (fence_id + companion_id) → walk_acts
 ```
 
-### 2.2 JSON 种子 Schema（`byCompanion`）
+### 2.2 段子结构（SQL 行）
 
-```json
-{
-  "id": "gc-05",
-  "label": "蝠池",
-  "triggerHint": "绕过独乐峰，看到形似蝙蝠的水池",
-  "location": { "lat": 39.93798, "lng": 116.3862, "radiusMeters": 30 },
-  "byCompanion": {
-    "sharp-elder": {
-      "jokes": [
-        {
-          "id": "gc-05-main",
-          "label": "水为财",
-          "acts": [
-            { "versionId": "gc-05-l1", "content": "第一幕…" },
-            { "versionId": "gc-05-l2a", "content": "第二幕…", "label": "水为财" },
-            { "versionId": "gc-05-l3", "content": "第三幕…" }
-          ]
-        }
-      ]
-    },
-    "su-dongpo": {
-      "jokes": []
-    }
-  }
-}
-```
+每个围栏、每位旅伴有 **2 个段子**（分支 A / B），每个段子 **3 幕**：
 
-| 字段 | 说明 |
-|------|------|
-| `byCompanion.{companionId}.jokes` | 每位旅伴在该围栏的独立段子池 |
-| `jokes[].acts` | 1～3 幕；`actIndex` 从 0 起 |
-| `acts[].versionId` | TTS 缓存键，全局唯一 |
+| act_index | 内容 |
+|-----------|------|
+| 0 | L1（两分支共用，各段子各存一份） |
+| 1 | L2（`label` 为分支标题） |
+| 2 | L3 |
 
-### 2.3 本地开发
+### 2.3 本地
 
 ```bash
-npm run db:setup:local          # 迁移 + 从 JSON seed 到 .data/walk.sqlite
-npm run db:seed:local -- --force  # 强制覆盖本地语料
-npm run geocode:fences -- validate --lat 39.9371 --lng 116.3862
+npm run db:setup:local              # 迁移 + 灌 seeds
+npm run db:seed:local -- --force    # 仅重灌语料
 ```
 
-### 2.4 Cloudflare 生产部署
+### 2.4 Cloudflare 生产
 
 ```bash
-# 1. 创建 D1（首次）
-npx wrangler d1 create buddy-walk
-# 将 database_id 写入 wrangler.toml
-
-# 2. 迁移 + 灌数据
-npm run db:migrate:remote
-npm run db:export-sql          # 生成 scripts/d1-seed-remote.sql
-npm run db:seed:remote
-
-# 3. Pages 绑定 D1（wrangler.toml 已配置 binding = "DB"）
+npx wrangler d1 create buddy-walk    # 首次，写入 wrangler.toml database_id
+npm run db:setup:remote
 ```
 
-改文案流程：
-
-```bash
-vim api/data/gong-wang-fu.json
-npm run db:seed:local -- --force
-npm run db:export-sql && npm run db:seed:remote
-```
+改稿：`vim seeds/0001_gong_wang_fu.sql` → `npm run db:seed:local -- --force` → `npm run db:seed:remote`
 
 ---
 
@@ -533,14 +494,12 @@ walk 模式下新触发会 `interrupt=true` 打断当前条。
 
 | 模块 | 路径 |
 |------|------|
-| 语料 JSON | `api/data/gong-wang-fu.json`（种子源） |
-| D1 迁移 | `migrations/0001_walk_content.sql` |
+| D1 语料 seed | `seeds/0001_gong_wang_fu.sql` |
 | D1 查询 | `functions/api/walk-db.js` |
-| Express 适配 | `api/data/walk-service.ts` + `api/db/local-walk-db.ts` |
-| Seed | `scripts/seed-walk-d1.ts`、`scripts/export-d1-seed-sql.ts` |
+| Express 适配 | `api/data/walk-service.ts` |
+| Seed 脚本 | `scripts/seed-walk-from-sql.ts` |
 | 类型 | `api/data/walk-area-types.ts` |
-| 客户端围栏列表 | `api/data/walk-areas.ts` |
-| 地理计算 | `api/data/walk-snippets.ts`（haversine） |
+| 地理计算 | `api/data/walk-snippets.ts` |
 | 静态资源映射 | `api/data/media.ts` |
 | 运营配置 | `api/config/walk-config.ts` |
 | 时长估算 | `api/config/speech-config.ts` |
@@ -565,8 +524,8 @@ walk 模式下新触发会 `interrupt=true` 打断当前条。
 
 | 能力 | 说明 | 阶段 |
 |------|------|------|
-| 真 GPS 标定 | 关闭 `simulation.enabled`，更新 JSON 内 WGS84 | Phase 2 |
-| 运营后台 | 编辑 JSON / D1，替代手改文件 | Phase 3 |
+| 真 GPS 标定 | 关闭 `simulation.enabled`，更新 `walk_fences` 坐标 | Phase 2 |
+| 运营后台 | CRUD 写 D1，替代手改 SQL | Phase 3 |
 | 已播同步账号 | `byFence` 迁服务端，换机不丢 | Phase 3 |
 | 池耗尽 UX | 提示「本站已听完」或引导下一围栏 | Phase 2+ |
 | 埋点 | `triggerType`、`jokeId`、`actIndex`、exclude 池大小 | Phase 4 |
@@ -585,6 +544,6 @@ walk 模式下新触发会 `interrupt=true` 打断当前条。
 | L1 自动触发 | 随机未播段子 `acts[0]` |
 | L2-A / L2-B 分支 | 独立段子，或 main 段子的 `acts[1]` |
 | L3 深度 | `acts[2]` |
-| `tree` in TS | 已废弃 → `jokes[].acts[]` in JSON |
+| `tree` in TS | 已废弃 → `walk_jokes` + `walk_acts` in D1 |
 | L2 分支展开追加行 | 已废弃 → **新段子** append 行；**同段子多幕**卡片内切 |
 | 同站重复随机同一段子 | 已废弃 → `walk-played-jokes` + `exclude` |

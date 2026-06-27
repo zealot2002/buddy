@@ -103,13 +103,19 @@ async function getFirstJokeRow(db, fenceId, companionId) {
 export async function getAllFenceRows(db) {
   const rows = await db
     .prepare(
-      `SELECT id, label, lat, lng, radius_meters AS radiusMeters, sort_order AS sortOrder
+      `SELECT id, label, trigger_hint AS triggerHint, lat, lng,
+              radius_meters AS radiusMeters, sort_order AS sortOrder, area_id AS areaId
        FROM walk_fences
        ORDER BY sort_order ASC, id ASC`,
     )
     .bind()
     .all();
   return rows.results ?? rows;
+}
+
+export async function getFencesByArea(db, areaId = 'gong-wang-fu') {
+  const fences = await getAllFenceRows(db);
+  return fences.filter((fence) => fence.areaId === areaId);
 }
 
 export async function getNearbyWalkStatus(db, lat, lng, limit = 20) {

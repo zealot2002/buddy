@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import {
   walkFindActiveFence,
+  walkGetFences,
   walkGetNearbyMetas,
   walkGetNearbyStatus,
   walkResolveAutoPlay,
@@ -15,6 +16,17 @@ function parseExcludeJokeIds(raw: unknown): string[] {
   if (typeof raw !== 'string' || !raw.trim()) return [];
   return raw.split(',').map((item) => item.trim()).filter(Boolean);
 }
+
+router.get('/fences', async (req: Request, res: Response) => {
+  try {
+    const areaId = (req.query.areaId as string) || 'gong-wang-fu';
+    const fences = await walkGetFences(areaId);
+    res.json(fences);
+  } catch (error) {
+    console.error('joyjoy walk fences failed:', error);
+    res.status(500).json({ error: 'walk_db_error' });
+  }
+});
 
 router.get('/nearby', async (req: Request, res: Response) => {
   try {

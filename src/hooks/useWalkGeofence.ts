@@ -33,6 +33,22 @@ interface UseWalkGeofenceOptions {
   onTrigger: (payload: WalkPlayPayload, meta: WalkSnippetMeta) => void;
 }
 
+export interface WalkFenceMeta {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  triggerHint?: string;
+  sortOrder?: number;
+}
+
+export async function fetchWalkFences(areaId = 'gong-wang-fu'): Promise<WalkFenceMeta[]> {
+  const res = await fetch(`${API_BASE}/walk/fences?areaId=${encodeURIComponent(areaId)}`);
+  if (!res.ok) throw new Error('Failed to fetch walk fences');
+  return res.json();
+}
+
 async function fetchNearbyMetas(lat: number, lng: number): Promise<WalkSnippetMeta[]> {
   const res = await fetch(`${API_BASE}/walk/nearby?lat=${lat}&lng=${lng}`);
   if (!res.ok) throw new Error('Failed to fetch nearby walk snippets');

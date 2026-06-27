@@ -1,4 +1,3 @@
-import { seedWalkContentFromJson } from './seed-walk-d1.js';
+import { seedWalkFromSql } from './seed-walk-from-sql.js';
 
-const force = process.argv.includes('--force');
-seedWalkContentFromJson({ force });
+seedWalkFromSql({ force: process.argv.includes('--force') });

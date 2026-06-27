@@ -1,6 +1,7 @@
 import data from './stories-data.json';
 import {
   findActiveFence,
+  getFencesByArea,
   getNearbyWalkMetas,
   getNearbyWalkStatus,
   resolveWalkAutoPlay,
@@ -166,6 +167,12 @@ export async function onRequest(context) {
     const nearbyLimit = walkConfig.nearby?.limit ?? 20;
 
     if (method === 'GET') {
+      if (path === '/api/walk/fences') {
+        const areaId = url.searchParams.get('areaId') || 'gong-wang-fu';
+        const fences = await getFencesByArea(db, areaId);
+        return Response.json(fences, { headers: corsHeaders });
+      }
+
       if (path === '/api/walk/nearby') {
         const lat = parseFloat(url.searchParams.get('lat') || '39.9163');
         const lng = parseFloat(url.searchParams.get('lng') || '116.3972');

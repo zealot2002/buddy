@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
 import {
-  fetchWalkPlay,
   fetchWalkAreaStatus,
+  fetchWalkFences,
+  fetchWalkPlay,
   useWalkGeofence,
+  type WalkFenceMeta,
   type WalkPlayPayload,
 } from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
-import { GONG_WANG_FU_FENCES } from '../../api/data/walk-areas.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
@@ -54,7 +55,8 @@ export const WalkListen = () => {
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
-  const [simPointId, setSimPointId] = useState(GONG_WANG_FU_FENCES[0].id);
+  const [simFences, setSimFences] = useState<WalkFenceMeta[]>([]);
+  const [simPointId, setSimPointId] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
   const messageCountRef = useRef(0);
@@ -77,9 +79,22 @@ export const WalkListen = () => {
   }, [fetchingMessageId, isPlaying, mode]);
 
   const simPoint = useMemo(
-    () => GONG_WANG_FU_FENCES.find((point) => point.id === simPointId) ?? GONG_WANG_FU_FENCES[0],
-    [simPointId],
+    () => simFences.find((point) => point.id === simPointId) ?? simFences[0],
+    [simFences, simPointId],
   );
+
+  useEffect(() => {
+    fetchWalkFences()
+      .then((fences) => {
+        setSimFences(fences);
+        if (fences[0]) {
+          setSimPointId((prev) => prev || fences[0].id);
+        }
+      })
+      .catch((error) => {
+        console.error('joyjoy fetch walk fences failed:', error);
+      });
+  }, []);
 
   const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number) => {
     try {
@@ -205,11 +220,11 @@ export const WalkListen = () => {
         actIndex: payload.actIndex ?? 0,
         actCount: payload.actCount ?? 1,
         actLabel: payload.actLabel,
-        spotLabel: payload.fenceLabel ?? simPoint.label,
+        spotLabel: payload.fenceLabel ?? simPoint?.label,
       });
       playWalk(payload, defaultCompanionId, true);
     },
-    [addMessage, defaultCompanionId, hasAreaContent, markJokePlayed, playWalk, simPoint.label],
+    [addMessage, defaultCompanionId, hasAreaContent, markJokePlayed, playWalk, simPoint?.label],
   );
 
   const { resetSession, triggerPoint } = useWalkGeofence({
@@ -273,30 +288,30 @@ export const WalkListen = () => {
   };
 
   const handleSimPointSelect = async (pointId: string) => {
-    const point = GONG_WANG_FU_FENCES.find((item) => item.id === pointId);
+    const point = simFences.find((item) => item.id === pointId);
     if (!point) return;
 
     setSimPointId(pointId);
-    setLocation(point.location.lat, point.location.lng, point.label);
+    setLocation(point.lat, point.lng, point.label);
     setHasAreaContent(true);
     setNearestFence({
       id: point.id,
       label: point.label,
       distanceMeters: 0,
       inside: true,
-      radius: point.location.radiusMeters,
+      radius: point.radiusMeters,
     });
     resetSession();
     lastL1TriggerRef.current = null;
-    await triggerPoint(pointId, point.location.lat, point.location.lng);
+    await triggerPoint(pointId, point.lat, point.lng);
   };
 
   const initialSimTriggeredRef = useRef(false);
   useEffect(() => {
-    if (!SIMULATION_ENABLED || initialSimTriggeredRef.current) return;
+    if (!SIMULATION_ENABLED || initialSimTriggeredRef.current || !simFences.length) return;
     initialSimTriggeredRef.current = true;
-    void handleSimPointSelect(GONG_WANG_FU_FENCES[0].id);
-  }, []);
+    void handleSimPointSelect(simFences[0].id);
+  }, [simFences]);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -387,7 +402,7 @@ export const WalkListen = () => {
               <MapPin className="h-3 w-3 shrink-0" />
               <span className="truncate">
                 {SIMULATION_ENABLED
-                  ? `模拟 · ${simPoint.label}`
+                  ? `模拟 · ${simPoint?.label ?? '加载中…'}`
                   : isLocating
                     ? '定位中…'
                     : nearestFence
@@ -450,7 +465,7 @@ export const WalkListen = () => {
           <div className="border-t border-black/5 px-3 py-2">
             <p className="mb-2 text-[11px] text-gray-500">模拟站点（恭王府动线）</p>
             <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-              {GONG_WANG_FU_FENCES.map((point) => (
+              {simFences.map((point) => (
                 <button
                   key={point.id}
                   type="button"
