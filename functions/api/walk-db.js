@@ -249,3 +249,17 @@ export async function listMissingCompanionJokes(db, areaId, companionId) {
     .all();
   return rows.results ?? rows;
 }
+
+export async function listWalkAreas(db) {
+  const rows = await db
+    .prepare(
+      `SELECT id, name, area_tag AS areaTag,
+              sim_base_lat AS simBaseLat, sim_base_lng AS simBaseLng,
+              sim_coord_step_lat AS simCoordStepLat, sim_radius_meters AS simRadiusMeters
+       FROM walk_areas
+       ORDER BY id ASC`,
+    )
+    .bind()
+    .all();
+  return rows.results ?? rows;
+}

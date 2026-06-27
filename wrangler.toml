@@ -12,7 +12,17 @@ database_name = "buddy-walk"
 database_id = "6a373f5e-06d8-40b5-b0eb-968df0c3a1b9"
 migrations_dir = "migrations"
 
-# Pages 生产环境不继承顶层 binding，需单独声明
+# TTS 音频缓存（voice_id + 文本 digest）
+# 首次：npx wrangler r2 bucket create buddy-tts-cache
+[[r2_buckets]]
+binding = "TTS_CACHE"
+bucket_name = "buddy-tts-cache"
+
+[[env.production.r2_buckets]]
+binding = "TTS_CACHE"
+bucket_name = "buddy-tts-cache"
+
+# Pages 生产环境不继承顶层 binding
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "buddy-walk"

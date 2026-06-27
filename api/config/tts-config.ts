@@ -74,6 +74,15 @@ export function resolveElevenLabsVoiceSettings(
   };
 }
 
+/** 拼入旅伴 delivery 风格提示，供 ElevenLabs 合成 */
+export function buildTtsSynthesisText(companionId: string | null | undefined, text: string): string {
+  const id = normalizeCompanionId(companionId || 'su-dongpo');
+  const body = text.trim();
+  const style = companions.find((item) => item.id === id)?.ttsStylePrompt?.trim();
+  if (!style) return body;
+  return `[${style}]\n${body}`;
+}
+
 /** @deprecated 兼容旧 Edge TTS 引用；新代码请用 resolveElevenLabsVoiceId */
 export function resolveTtsProfileId(companionId?: string | null): string {
   return resolveElevenLabsVoiceId(companionId);

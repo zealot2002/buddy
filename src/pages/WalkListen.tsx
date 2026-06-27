@@ -3,16 +3,20 @@ import { MapPin } from 'lucide-react';
 import { useCompanions } from '../hooks/useApi';
 import {
   fetchWalkAreaStatus,
+  fetchWalkAreas,
   fetchWalkFences,
   fetchWalkPlay,
   useWalkGeofence,
+  type WalkAreaMeta,
   type WalkFenceMeta,
   type WalkPlayPayload,
 } from '../hooks/useWalkGeofence';
 import { WALK_LISTEN_CONFIG } from '../../api/config/walk-config.js';
+import { getWalkAreaBackground } from '../../api/data/media.js';
 import { usePreferencesStore } from '../store/preferences';
 import { usePlayerStore } from '../store/player';
 import { useLocationStore } from '../store/location';
+import { useWalkAreaStore } from '../store/walk-area';
 import { useWalkChatStore, type WalkChatMessage } from '../store/walk-chat';
 import { useWalkPlayedJokesStore } from '../store/walk-played-jokes';
 import { getCompanionAvatar } from '../../api/data/media.js';
@@ -32,6 +36,18 @@ const COMPANION_HINT_FADE_MS = 700;
 
 const SIMULATION_ENABLED = WALK_LISTEN_CONFIG.simulation.enabled;
 
+const FALLBACK_WALK_AREAS: WalkAreaMeta[] = [
+  { id: 'gong-wang-fu', name: '恭王府', areaTag: 'gong-wang-fu' },
+  { id: 'shenyang-palace', name: '沈阳故宫', areaTag: 'shenyang-palace' },
+];
+
+function buildWelcomeMessage(areaName: string, simulation: boolean): string {
+  if (simulation) {
+    return `${areaName}模拟游览。点选下方站点，旅伴会随机开讲一个段子。感兴趣就点「继续说」。`;
+  }
+  return '欢迎来到同游。到了有讲解的区域，旅伴会主动跟你聊。';
+}
+
 function playCardContent(
   playWalk: ReturnType<typeof usePlayerStore.getState>['playWalk'],
   snippetId: string,
@@ -47,19 +63,28 @@ export const WalkListen = () => {
   const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
   const { playWalk, isPlaying, mode } = usePlayerStore();
-  const { messages, addMessage, updateMessage } = useWalkChatStore();
+  const { messages, addMessage, updateMessage, clearMessages } = useWalkChatStore();
   const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
+  const { areaId, setAreaId } = useWalkAreaStore();
 
   const [companionHintPhase, setCompanionHintPhase] = useState<'off' | 'in' | 'out'>('off');
 
   const [fetchingMessageId, setFetchingMessageId] = useState<string | null>(null);
   const [nearestFence, setNearestFence] = useState<WalkNearbyStatus | null>(null);
   const [hasAreaContent, setHasAreaContent] = useState(false);
+  const [walkAreas, setWalkAreas] = useState<WalkAreaMeta[]>(FALLBACK_WALK_AREAS);
   const [simFences, setSimFences] = useState<WalkFenceMeta[]>([]);
   const [simPointId, setSimPointId] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastL1TriggerRef = useRef<{ snippetId: string; at: number } | null>(null);
   const messageCountRef = useRef(0);
+  const initialSimTriggeredRef = useRef(false);
+
+  const currentArea = useMemo(
+    () => walkAreas.find((area) => area.id === areaId) ?? FALLBACK_WALK_AREAS.find((area) => area.id === areaId),
+    [walkAreas, areaId],
+  );
+  const areaBackground = getWalkAreaBackground(areaId);
 
   type CompanionState = 'idle' | 'preparing' | 'speaking';
 
@@ -84,17 +109,33 @@ export const WalkListen = () => {
   );
 
   useEffect(() => {
-    fetchWalkFences()
+    fetchWalkAreas()
+      .then((areas) => {
+        if (areas.length) setWalkAreas(areas);
+      })
+      .catch((error) => {
+        console.error('joyjoy fetch walk areas failed:', error);
+      });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchWalkFences(areaId)
       .then((fences) => {
+        if (cancelled) return;
         setSimFences(fences);
-        if (fences[0]) {
-          setSimPointId((prev) => prev || fences[0].id);
-        }
+        setSimPointId(fences[0]?.id ?? '');
+        initialSimTriggeredRef.current = false;
       })
       .catch((error) => {
         console.error('joyjoy fetch walk fences failed:', error);
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [areaId]);
 
   const refreshAreaStatus = useCallback(async (currentLat: number, currentLng: number) => {
     try {
@@ -236,6 +277,18 @@ export const WalkListen = () => {
     onTrigger: handleGeofenceTrigger,
   });
 
+  const handleAreaChange = useCallback((nextAreaId: string) => {
+    if (nextAreaId === areaId) return;
+
+    setAreaId(nextAreaId);
+    resetSession();
+    lastL1TriggerRef.current = null;
+    initialSimTriggeredRef.current = false;
+    clearMessages();
+    setNearestFence(null);
+    setHasAreaContent(SIMULATION_ENABLED);
+  }, [areaId, clearMessages, resetSession, setAreaId]);
+
   const applyCardAct = useCallback(
     async (message: WalkChatMessage, nextActIndex: number) => {
       if (!message.snippetId || !message.jokeId || fetchingMessageId) return;
@@ -306,23 +359,20 @@ export const WalkListen = () => {
     await triggerPoint(pointId, point.lat, point.lng);
   };
 
-  const initialSimTriggeredRef = useRef(false);
   useEffect(() => {
     if (!SIMULATION_ENABLED || initialSimTriggeredRef.current || !simFences.length) return;
     initialSimTriggeredRef.current = true;
     void handleSimPointSelect(simFences[0].id);
-  }, [simFences]);
+  }, [simFences, areaId]);
 
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && currentArea?.name) {
       addMessage({
         role: 'system',
-        content: SIMULATION_ENABLED
-            ? '恭王府模拟游览。点选下方站点，旅伴会随机开讲一个段子。感兴趣就点「继续说」。'
-            : '欢迎来到同游。到了有讲解的区域，旅伴会主动跟你聊。',
+        content: buildWelcomeMessage(currentArea.name, SIMULATION_ENABLED),
       });
     }
-  }, [messages.length, addMessage]);
+  }, [messages.length, addMessage, currentArea?.name, areaId]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -388,7 +438,7 @@ export const WalkListen = () => {
       style={{
         top: 0,
         bottom: 'calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))',
-        backgroundImage: 'url(/images/background/gong-wang-fu.webp)',
+        backgroundImage: `url(${areaBackground})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -398,7 +448,24 @@ export const WalkListen = () => {
         <div className="flex items-start justify-between gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
             <h1 className="font-serif text-lg font-bold text-gray-900">同游</h1>
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {walkAreas.map((area) => (
+                <button
+                  key={area.id}
+                  type="button"
+                  onClick={() => handleAreaChange(area.id)}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 text-[11px] transition-colors',
+                    areaId === area.id
+                      ? 'bg-gold/25 text-gray-900 ring-1 ring-gold/50'
+                      : 'bg-white/80 text-gray-600 ring-1 ring-black/5 active:bg-black/5',
+                  )}
+                >
+                  {area.name}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-500">
               <MapPin className="h-3 w-3 shrink-0" />
               <span className="truncate">
                 {SIMULATION_ENABLED
@@ -463,7 +530,9 @@ export const WalkListen = () => {
 
         {SIMULATION_ENABLED && (
           <div className="border-t border-black/5 px-3 py-2">
-            <p className="mb-2 text-[11px] text-gray-500">模拟站点（恭王府动线）</p>
+            <p className="mb-2 text-[11px] text-gray-500">
+              模拟站点 · {currentArea?.name ?? '加载中…'}
+            </p>
             <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
               {simFences.map((point) => (
                 <button

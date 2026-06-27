@@ -52,3 +52,13 @@ export const WALK_INTRO_VIDEOS: Partial<Record<string, string>> = {
 export function getWalkIntroVideo(companionId: string): string | undefined {
   return WALK_INTRO_VIDEOS[companionId];
 }
+
+/** 同游页景区背景图（public/images/） */
+export const WALK_AREA_BACKGROUNDS: Record<string, string> = {
+  'gong-wang-fu': '/images/background/gong-wang-fu.webp',
+  'shenyang-palace': '/images/covers/forbidden-city-hall.webp',
+};
+
+export function getWalkAreaBackground(areaId: string): string {
+  return WALK_AREA_BACKGROUNDS[areaId] ?? WALK_AREA_BACKGROUNDS['gong-wang-fu'];
+}

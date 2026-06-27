@@ -12,6 +12,7 @@ import {
   getNearbyWalkStatus,
   resolveWalkAutoPlay,
   resolveWalkPlay,
+  listWalkAreas,
 } from '../../functions/api/walk-db.js';
 
 let readyPromise: Promise<void> | null = null;
@@ -39,6 +40,11 @@ function getSpeechConfig() {
 export async function walkGetFences(areaId = 'gong-wang-fu') {
   await ensureReady();
   return getFencesByArea(getDb(), areaId);
+}
+
+export async function walkListAreas() {
+  await ensureReady();
+  return listWalkAreas(getDb());
 }
 
 export async function walkGetNearbyMetas(lat: number, lng: number, limit?: number) {

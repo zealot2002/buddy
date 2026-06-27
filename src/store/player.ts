@@ -125,7 +125,7 @@ const startContentAudio = (
   stopCurrentAudio();
 
   const normalizedId = normalizeCompanionId(companionId);
-  const audioUrl = `/api/tts?text=${encodeURIComponent(content)}&companionId=${encodeURIComponent(normalizedId)}&lang=zh-CN`;
+  const audioUrl = `/api/tts?text=${encodeURIComponent(content)}&companionId=${encodeURIComponent(normalizedId)}&lang=zh-CN&stream=1`;
 
   audioElement = new Audio(audioUrl);
   audioElement.volume = get().volume;

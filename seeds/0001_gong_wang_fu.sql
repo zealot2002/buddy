@@ -1,10 +1,10 @@
--- 恭王府边走边听语料（唯一数据源）
+-- 恭王府边走边听语料（仅覆盖本景区，不删其他 area）
 -- fences=10, jokes=40, acts=120
 
-DELETE FROM walk_acts;
-DELETE FROM walk_jokes;
-DELETE FROM walk_fences;
-DELETE FROM walk_areas;
+DELETE FROM walk_acts WHERE fence_id IN (SELECT id FROM walk_fences WHERE area_id = 'gong-wang-fu');
+DELETE FROM walk_jokes WHERE fence_id IN (SELECT id FROM walk_fences WHERE area_id = 'gong-wang-fu');
+DELETE FROM walk_fences WHERE area_id = 'gong-wang-fu';
+DELETE FROM walk_areas WHERE id = 'gong-wang-fu';
 
 INSERT INTO walk_areas (id, name, area_tag, sim_base_lat, sim_base_lng, sim_coord_step_lat, sim_radius_meters)
 VALUES ('gong-wang-fu', '恭王府', 'gong-wang-fu', 39.9355, 116.3835, 0.00022, 8);

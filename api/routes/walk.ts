@@ -4,6 +4,7 @@ import {
   walkGetFences,
   walkGetNearbyMetas,
   walkGetNearbyStatus,
+  walkListAreas,
   walkResolveAutoPlay,
   walkResolvePlay,
 } from '../data/walk-service.js';
@@ -16,6 +17,16 @@ function parseExcludeJokeIds(raw: unknown): string[] {
   if (typeof raw !== 'string' || !raw.trim()) return [];
   return raw.split(',').map((item) => item.trim()).filter(Boolean);
 }
+
+router.get('/areas', async (_req: Request, res: Response) => {
+  try {
+    const areas = await walkListAreas();
+    res.json(areas);
+  } catch (error) {
+    console.error('joyjoy walk areas failed:', error);
+    res.status(500).json({ error: 'walk_db_error' });
+  }
+});
 
 router.get('/fences', async (req: Request, res: Response) => {
   try {

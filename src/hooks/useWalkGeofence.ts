@@ -43,6 +43,20 @@ export interface WalkFenceMeta {
   sortOrder?: number;
 }
 
+export interface WalkAreaMeta {
+  id: string;
+  name: string;
+  areaTag: string;
+  simBaseLat?: number;
+  simBaseLng?: number;
+}
+
+export async function fetchWalkAreas(): Promise<WalkAreaMeta[]> {
+  const res = await fetch(`${API_BASE}/walk/areas`);
+  if (!res.ok) throw new Error('Failed to fetch walk areas');
+  return res.json();
+}
+
 export async function fetchWalkFences(areaId = 'gong-wang-fu'): Promise<WalkFenceMeta[]> {
   const res = await fetch(`${API_BASE}/walk/fences?areaId=${encodeURIComponent(areaId)}`);
   if (!res.ok) throw new Error('Failed to fetch walk fences');

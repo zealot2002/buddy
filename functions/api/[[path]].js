@@ -4,65 +4,17 @@ import {
   getFencesByArea,
   getNearbyWalkMetas,
   getNearbyWalkStatus,
+  listWalkAreas,
   resolveWalkAutoPlay,
   resolveWalkPlay,
 } from './walk-db.js';
+import { handleTtsRequest } from './tts-handler.js';
 
 const { stories, companions, walkOffsiteChatter = {}, appConfig = {} } = data;
 
 const speechConfig = appConfig.speech || { minDurationSeconds: 45, charsPerSecond: 4.5 };
 const walkConfig = appConfig.walk || { nearby: { limit: 20 } };
 const ttsConfig = appConfig.tts || { provider: 'elevenlabs', modelId: 'eleven_multilingual_v2', outputFormat: 'mp3_44100_128' };
-
-const EMOTION_STABILITY = { cheerful: 0.45, gentle: 0.55, warm: 0.5, humorous: 0.35 };
-const EMOTION_STYLE = { cheerful: 0.35, gentle: 0.25, warm: 0.3, humorous: 0.45 };
-
-function resolveElevenLabsVoiceSettings(companionId) {
-  const normalizedId = normalizeCompanionId(companionId || 'su-dongpo');
-  const companion = companions.find((item) => item.id === normalizedId) || companions[0];
-  const emotion = companion?.toneProfile?.emotion || 'cheerful';
-  return {
-    stability: EMOTION_STABILITY[emotion] ?? 0.5,
-    similarity_boost: 0.75,
-    style: EMOTION_STYLE[emotion] ?? 0.3,
-    use_speaker_boost: true,
-    speed: companion?.toneProfile?.speed ?? 1,
-  };
-}
-
-function resolveElevenLabsVoiceId(companionId) {
-  const normalizedId = normalizeCompanionId(companionId || 'su-dongpo');
-  const companion = companions.find((item) => item.id === normalizedId);
-  return companion?.voiceId || 'JBFqnCBsd6RMkjVDRZzb';
-}
-
-async function synthesizeElevenLabsSpeech(text, companionId, apiKey) {
-  const voiceId = resolveElevenLabsVoiceId(companionId);
-  const voiceSettings = resolveElevenLabsVoiceSettings(companionId);
-  const { speed, ...settings } = voiceSettings;
-  const url = new URL(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`);
-  url.searchParams.set('output_format', ttsConfig.outputFormat || 'mp3_44100_128');
-
-  return fetch(url.toString(), {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-      'Content-Type': 'application/json',
-      Accept: 'audio/mpeg',
-    },
-    body: JSON.stringify({
-      text: text.trim(),
-      model_id: ttsConfig.modelId || 'eleven_multilingual_v2',
-      voice_settings: settings,
-      speed,
-    }),
-  });
-}
-
-async function synthesizeGoogleSpeechFallback(text, lang = 'zh-CN') {
-  const encodedText = encodeURIComponent(text);
-  return fetch(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`);
-}
 
 function estimateSpeechDuration(text) {
   return Math.max(
@@ -167,6 +119,11 @@ export async function onRequest(context) {
     const nearbyLimit = walkConfig.nearby?.limit ?? 20;
 
     if (method === 'GET') {
+      if (path === '/api/walk/areas') {
+        const areas = await listWalkAreas(db);
+        return Response.json(areas, { headers: corsHeaders });
+      }
+
       if (path === '/api/walk/fences') {
         const areaId = url.searchParams.get('areaId') || 'gong-wang-fu';
         const fences = await getFencesByArea(db, areaId);
@@ -306,43 +263,14 @@ export async function onRequest(context) {
 
   if (path === '/api/tts') {
     if (method === 'GET') {
-      const text = url.searchParams.get('text');
-      const lang = url.searchParams.get('lang') || 'zh-CN';
-      const companionId = url.searchParams.get('companionId') || 'su-dongpo';
-      const apiKey = context.env?.ELEVENLABS_API_KEY;
-
-      if (!text?.trim()) {
-        return Response.json({ error: 'Text parameter is required' }, { status: 400, headers: corsHeaders });
-      }
-
       try {
-        let response;
-        let provider = 'google';
-
-        if (apiKey) {
-          response = await synthesizeElevenLabsSpeech(text, companionId, apiKey);
-          if (response.ok) {
-            provider = 'elevenlabs';
-          } else {
-            console.error('joyjoy ElevenLabs TTS failed:', response.status);
-            response = await synthesizeGoogleSpeechFallback(text, lang);
-          }
-        } else {
-          response = await synthesizeGoogleSpeechFallback(text, lang);
-        }
-
-        if (!response.ok) {
-          return Response.json({ error: 'Failed to generate audio' }, { status: 500, headers: corsHeaders });
-        }
-
-        const audioBuffer = await response.arrayBuffer();
-        return new Response(audioBuffer, {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': response.headers.get('Content-Type') || 'audio/mpeg',
-            'Cache-Control': 'public, max-age=86400',
-            'X-TTS-Provider': provider,
-          },
+        return await handleTtsRequest({
+          url,
+          companions,
+          ttsConfig,
+          apiKey: context.env?.ELEVENLABS_API_KEY,
+          r2Bucket: context.env?.TTS_CACHE,
+          corsHeaders,
         });
       } catch (error) {
         console.error('joyjoy TTS service error:', error);

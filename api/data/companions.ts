@@ -18,6 +18,8 @@ export interface Companion {
   persona: string;
   voiceId: string;
   voiceType: string;
+  /** ElevenLabs 合成时的 delivery 风格提示（拼入请求文本） */
+  ttsStylePrompt?: string;
   toneProfile: ToneProfile;
   storiesCount: number;
 }
@@ -38,13 +40,14 @@ export const companions: Companion[] = [
     style: '豪放洒脱',
     description: '北宋文坛领袖，豪放派诗词大家。他会用风趣幽默的方式，带你领略历史的诗意与豪情。',
     persona: '苏轼，字子瞻，号东坡居士。北宋著名文学家、书法家、画家。性格旷达乐观，虽仕途坎坷但始终保持豁达心境。精通诗词、散文、书画，是中国文学史上的全才。讲述时喜欢引用诗词典故，语速偏慢，声音醇厚，带有文人的儒雅与豪迈。',
-    voiceId: 'JBFqnCBsd6RMkjVDRZzb', // ElevenLabs George — 可通过 ELEVENLABS_VOICE_SU_DONGPO 覆盖
-    voiceType: '醇厚男声',
+    voiceId: 'ErXwobaYiN019PkySvjV', // ElevenLabs Antoni — 可通过 ELEVENLABS_VOICE_SU_DONGPO 覆盖
+    voiceType: '温润男声',
+    ttsStylePrompt: '古风演播腔，沉稳有书卷气，朗读古文有韵律感，语速平缓',
     toneProfile: {
-      speed: 0.9,
+      speed: 0.88,
       pitch: 0.85,
       volume: 1.0,
-      emotion: 'cheerful',
+      emotion: 'gentle',
       pauseBetweenSentences: 400,
       pauseBetweenParagraphs: 800,
     },
@@ -57,10 +60,11 @@ export const companions: Companion[] = [
     style: '犀利幽默',
     description: '一位见多识广的老炮儿，言辞犀利一针见血，用独特视角解读历史背后的故事。',
     persona: '一位见多识广、性格直爽的北京老炮儿。说话犀利风趣，喜欢吐槽和揭秘，不爱说场面话。肚子里装着各种冷知识和历史真相，总能从别人想不到的角度看问题。虽然嘴上不饶人，但说的都是干货，听着过瘾还长见识。语速偏快，声音略带沧桑，节奏感强。',
-    voiceId: 'IKne3meq5aSn9XLyUdCD', // ElevenLabs Charlie — 可通过 ELEVENLABS_VOICE_SHARP_ELDER 覆盖
+    voiceId: 'CwhRBWXzGAHq8TQ4Fs17', // ElevenLabs Roger（备选 Daniel: onwK4e9ZLuTAKqWW03F9）
     voiceType: '沧桑男声',
+    ttsStylePrompt: '北京口语化，语速偏慢，带调侃语气，像胡同大爷聊天，儿化音自然',
     toneProfile: {
-      speed: 1.1,
+      speed: 0.85,
       pitch: 0.8,
       volume: 1.05,
       emotion: 'humorous',
