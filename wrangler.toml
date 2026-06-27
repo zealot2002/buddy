@@ -3,28 +3,18 @@ compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
 
 # Cloudflare D1 — 边走边听语料
-# 首次：npx wrangler d1 create buddy-walk
-# 将输出的 database_id 填入下方，再 npm run db:migrate:remote && npm run db:seed:remote
+# 1. npx wrangler d1 create buddy-walk
+# 2. 将下方 database_id 换成 create 输出的 UUID
+# 3. npm run db:setup:remote
 [[d1_databases]]
 binding = "DB"
 database_name = "buddy-walk"
-database_id = "00000000-0000-0000-0000-000000000001"
+database_id = "6a373f5e-06d8-40b5-b0eb-968df0c3a1b9"
 migrations_dir = "migrations"
 
-[build]
-command = "npm run build"
-publish_dir = "dist"
-
-[env.production]
-NODE_ENV = "production"
-
-[[headers]]
-source = "/*"
-headers = [
-  { key = "Access-Control-Allow-Origin", value = "*" },
-  { key = "Access-Control-Allow-Methods", value = "GET, POST, PUT, DELETE, OPTIONS" },
-  { key = "Access-Control-Allow-Headers", value = "Content-Type, Authorization" },
-  { key = "X-Frame-Options", value = "DENY" },
-  { key = "X-XSS-Protection", value = "1; mode=block" },
-  { key = "X-Content-Type-Options", value = "nosniff" }
-]
+# Pages 生产环境不继承顶层 binding，需单独声明
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "buddy-walk"
+database_id = "6a373f5e-06d8-40b5-b0eb-968df0c3a1b9"
+migrations_dir = "migrations"
