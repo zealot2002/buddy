@@ -5,11 +5,6 @@ import {
   resolveElevenLabsVoiceSettings,
   TTS_PUBLIC_CONFIG,
 } from '../config/tts-config.js';
-import {
-  readLocalTtsCache,
-  ttsCacheObjectKey,
-  writeLocalTtsCache,
-} from './tts-cache.js';
 
 export interface SynthesizeSpeechOptions {
   text: string;
@@ -51,11 +46,72 @@ function buildElevenLabsBody(companionId: string | null | undefined, text: strin
   };
 }
 
-/** Google TTS 兜底（无韵律控制，仅开发/故障降级） */
+/** Google TTS 兜底（无韵律控制，额度/故障降级） */
 export async function synthesizeSpeechFallback(text: string, lang = 'zh-CN'): Promise<Response> {
-  const encodedText = encodeURIComponent(text);
+  const encodedText = encodeURIComponent(text.trim());
   const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`;
   return fetch(googleTtsUrl);
+}
+
+function splitTextForGoogleTts(text: string, maxLen = 180): string[] {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxLen) return [trimmed];
+
+  const chunks: string[] = [];
+  let rest = trimmed;
+  while (rest.length > maxLen) {
+    const slice = rest.slice(0, maxLen);
+    const breakAt = Math.max(
+      slice.lastIndexOf('。'),
+      slice.lastIndexOf('！'),
+      slice.lastIndexOf('？'),
+      slice.lastIndexOf('\n'),
+    );
+    const cut = breakAt > maxLen * 0.4 ? breakAt + 1 : maxLen;
+    chunks.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) chunks.push(rest);
+  return chunks.filter(Boolean);
+}
+
+/** 普通 TTS 降级：Google 合成，长文本自动分段 */
+export async function synthesizeGoogleTts(
+  text: string,
+  lang = 'zh-CN',
+): Promise<SynthesizeSpeechResult> {
+  const chunks = splitTextForGoogleTts(text);
+  const buffers: ArrayBuffer[] = [];
+
+  for (const chunk of chunks) {
+    const response = await synthesizeSpeechFallback(chunk, lang);
+    if (!response.ok) {
+      throw new Error(`joyjoy Google TTS fallback failed: ${response.status}`);
+    }
+    buffers.push(await response.arrayBuffer());
+  }
+
+  const totalLength = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
+  const merged = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const buf of buffers) {
+    merged.set(new Uint8Array(buf), offset);
+    offset += buf.byteLength;
+  }
+
+  return {
+    buffer: merged.buffer,
+    contentType: 'audio/mpeg',
+    provider: 'google',
+  };
+}
+
+async function logElevenLabsFailure(response: Response): Promise<void> {
+  const detail = await response.text().catch(() => '');
+  console.error('joyjoy ElevenLabs TTS failed:', response.status, detail);
+  if (detail.includes('quota_exceeded')) {
+    console.error('joyjoy ElevenLabs quota exceeded, using Google TTS fallback');
+  }
 }
 
 export async function synthesizeElevenLabsSpeech(
@@ -82,74 +138,31 @@ export async function synthesizeElevenLabsSpeech(
   });
 }
 
-export function resolveTtsCacheKey(companionId: string | null | undefined, text: string): {
-  objectKey: string;
-  voiceId: string;
-  synthesisText: string;
-} {
-  const voiceId = resolveElevenLabsVoiceId(companionId);
-  const synthesisText = buildTtsSynthesisText(companionId, text);
-  return {
-    objectKey: ttsCacheObjectKey(voiceId, synthesisText),
-    voiceId,
-    synthesisText,
-  };
-}
-
-export function readCachedTtsAudio(companionId: string | null | undefined, text: string): Buffer | null {
-  const { objectKey } = resolveTtsCacheKey(companionId, text);
-  return readLocalTtsCache(objectKey);
-}
-
-export function writeCachedTtsAudio(
-  companionId: string | null | undefined,
-  text: string,
-  data: Buffer | ArrayBuffer,
-): string {
-  const { objectKey } = resolveTtsCacheKey(companionId, text);
-  writeLocalTtsCache(objectKey, data);
-  return objectKey;
-}
-
 export async function synthesizeSpeechWithFallback(
   options: SynthesizeSpeechOptions,
   lang = 'zh-CN',
 ): Promise<SynthesizeSpeechResult> {
-  const cached = readCachedTtsAudio(options.companionId, options.text);
-  if (cached) {
-    return {
-      buffer: cached.buffer.slice(cached.byteOffset, cached.byteOffset + cached.byteLength),
-      contentType: 'audio/mpeg',
-      provider: 'elevenlabs',
-    };
-  }
+  const apiKey = options.apiKey ?? getElevenLabsApiKey();
 
-  try {
-    const elevenResponse = await synthesizeElevenLabsSpeech({ ...options, stream: false });
-    if (elevenResponse.ok) {
-      const buffer = await elevenResponse.arrayBuffer();
-      writeCachedTtsAudio(options.companionId, options.text, buffer);
-      return {
-        buffer,
-        contentType: elevenResponse.headers.get('Content-Type') || 'audio/mpeg',
-        provider: 'elevenlabs',
-      };
+  if (apiKey) {
+    try {
+      const elevenResponse = await synthesizeElevenLabsSpeech({ ...options, apiKey, stream: false });
+      if (elevenResponse.ok) {
+        return {
+          buffer: await elevenResponse.arrayBuffer(),
+          contentType: elevenResponse.headers.get('Content-Type') || 'audio/mpeg',
+          provider: 'elevenlabs',
+        };
+      }
+      await logElevenLabsFailure(elevenResponse);
+    } catch (error) {
+      console.error('joyjoy ElevenLabs TTS error:', error);
     }
-    console.error('joyjoy ElevenLabs TTS failed:', elevenResponse.status, await elevenResponse.text());
-  } catch (error) {
-    console.error('joyjoy ElevenLabs TTS error:', error);
+  } else {
+    console.error('joyjoy ELEVENLABS_API_KEY missing, using Google TTS fallback');
   }
 
-  const fallback = await synthesizeSpeechFallback(options.text, lang);
-  if (!fallback.ok) {
-    throw new Error(`TTS fallback failed: ${fallback.status}`);
-  }
-
-  return {
-    buffer: await fallback.arrayBuffer(),
-    contentType: fallback.headers.get('Content-Type') || 'audio/mpeg',
-    provider: 'google',
-  };
+  return synthesizeGoogleTts(options.text, lang);
 }
 
 /** @deprecated 旧 Edge SSML 路径，保留导出以免外部引用报错 */

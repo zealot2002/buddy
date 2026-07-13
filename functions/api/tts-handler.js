@@ -35,35 +35,6 @@ function resolveElevenLabsVoiceId(companionId, companions) {
   return companion?.voiceId || 'JBFqnCBsd6RMkjVDRZzb';
 }
 
-async function ttsCacheDigest(text) {
-  const data = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
-    .slice(0, 32);
-}
-
-async function ttsCacheObjectKey(voiceId, synthesisText) {
-  const digest = await ttsCacheDigest(synthesisText);
-  return `tts/${voiceId}/${digest}.mp3`;
-}
-
-async function readR2TtsCache(bucket, voiceId, synthesisText) {
-  if (!bucket) return null;
-  const key = await ttsCacheObjectKey(voiceId, synthesisText);
-  const object = await bucket.get(key);
-  if (!object) return null;
-  return { key, object };
-}
-
-async function writeR2TtsCache(bucket, key, data) {
-  if (!bucket) return;
-  await bucket.put(key, data, {
-    httpMetadata: { contentType: 'audio/mpeg' },
-  });
-}
-
 async function synthesizeElevenLabsSpeech({
   text,
   companionId,
@@ -97,8 +68,65 @@ async function synthesizeElevenLabsSpeech({
 }
 
 async function synthesizeGoogleSpeechFallback(text, lang = 'zh-CN') {
-  const encodedText = encodeURIComponent(text);
+  const encodedText = encodeURIComponent(String(text || '').trim());
   return fetch(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${lang}&client=tw-ob`);
+}
+
+function splitTextForGoogleTts(text, maxLen = 180) {
+  const trimmed = String(text || '').trim();
+  if (trimmed.length <= maxLen) return [trimmed];
+
+  const chunks = [];
+  let rest = trimmed;
+  while (rest.length > maxLen) {
+    const slice = rest.slice(0, maxLen);
+    const breakAt = Math.max(
+      slice.lastIndexOf('。'),
+      slice.lastIndexOf('！'),
+      slice.lastIndexOf('？'),
+      slice.lastIndexOf('\n'),
+    );
+    const cut = breakAt > maxLen * 0.4 ? breakAt + 1 : maxLen;
+    chunks.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) chunks.push(rest);
+  return chunks.filter(Boolean);
+}
+
+async function synthesizeGoogleTts(text, lang = 'zh-CN') {
+  const chunks = splitTextForGoogleTts(text);
+  const buffers = [];
+
+  for (const chunk of chunks) {
+    const response = await synthesizeGoogleSpeechFallback(chunk, lang);
+    if (!response.ok) {
+      throw new Error(`joyjoy Google TTS fallback failed: ${response.status}`);
+    }
+    buffers.push(await response.arrayBuffer());
+  }
+
+  const totalLength = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
+  const merged = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const buf of buffers) {
+    merged.set(new Uint8Array(buf), offset);
+    offset += buf.byteLength;
+  }
+
+  return merged.buffer;
+}
+
+async function respondWithGoogleFallback(text, lang, reason) {
+  console.error(`joyjoy ${reason}, using Google TTS fallback`);
+  const audioBuffer = await synthesizeGoogleTts(text, lang);
+  return new Response(audioBuffer, {
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Cache-Control': 'public, max-age=86400',
+      'X-TTS-Provider': 'google',
+    },
+  });
 }
 
 export async function handleTtsRequest({
@@ -106,7 +134,6 @@ export async function handleTtsRequest({
   companions,
   ttsConfig,
   apiKey,
-  r2Bucket,
   corsHeaders,
 }) {
   const text = url.searchParams.get('text');
@@ -118,90 +145,55 @@ export async function handleTtsRequest({
     return Response.json({ error: 'Text parameter is required' }, { status: 400, headers: corsHeaders });
   }
 
-  const voiceId = resolveElevenLabsVoiceId(companionId, companions);
-  const synthesisText = buildTtsSynthesisText(companionId, text, companions);
-  const cacheKey = await ttsCacheObjectKey(voiceId, synthesisText);
+  if (apiKey) {
+    const upstream = await synthesizeElevenLabsSpeech({
+      text,
+      companionId,
+      apiKey,
+      companions,
+      ttsConfig,
+      stream,
+    });
 
-  const cached = await readR2TtsCache(r2Bucket, voiceId, synthesisText);
-  if (cached?.object) {
-    return new Response(cached.object.body, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'X-TTS-Provider': 'elevenlabs',
-        'X-TTS-Cache': 'hit',
-      },
+    if (upstream.ok && stream && upstream.body) {
+      return new Response(upstream.body, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg',
+          'Cache-Control': 'no-store',
+          'X-TTS-Provider': 'elevenlabs',
+        },
+      });
+    }
+
+    if (upstream.ok && !stream) {
+      const audioBuffer = await upstream.arrayBuffer();
+      return new Response(audioBuffer, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg',
+          'Cache-Control': 'public, max-age=86400',
+          'X-TTS-Provider': 'elevenlabs',
+        },
+      });
+    }
+
+    const detail = await upstream.text().catch(() => '');
+    console.error('joyjoy ElevenLabs TTS failed:', upstream.status, detail);
+    const reason = detail.includes('quota_exceeded')
+      ? 'ElevenLabs quota exceeded'
+      : 'ElevenLabs unavailable';
+    const fallback = await respondWithGoogleFallback(text, lang, reason);
+    return new Response(fallback.body, {
+      headers: { ...corsHeaders, ...Object.fromEntries(fallback.headers.entries()) },
     });
   }
 
-  if (apiKey) {
-    if (stream) {
-      const upstream = await synthesizeElevenLabsSpeech({
-        text,
-        companionId,
-        apiKey,
-        companions,
-        ttsConfig,
-        stream: true,
-      });
-      if (upstream.ok && upstream.body) {
-        return new Response(upstream.body, {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg',
-            'Cache-Control': 'no-store',
-            'X-TTS-Provider': 'elevenlabs',
-            'X-TTS-Cache': 'miss',
-          },
-        });
-      }
-      console.error('joyjoy ElevenLabs stream failed:', upstream.status);
-    } else {
-      const upstream = await synthesizeElevenLabsSpeech({
-        text,
-        companionId,
-        apiKey,
-        companions,
-        ttsConfig,
-        stream: false,
-      });
-      if (upstream.ok) {
-        const audioBuffer = await upstream.arrayBuffer();
-        await writeR2TtsCache(r2Bucket, cacheKey, audioBuffer);
-        return new Response(audioBuffer, {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg',
-            'Cache-Control': 'public, max-age=31536000, immutable',
-            'X-TTS-Provider': 'elevenlabs',
-            'X-TTS-Cache': 'store',
-          },
-        });
-      }
-      console.error('joyjoy ElevenLabs TTS failed:', upstream.status);
-    }
-  }
-
-  const fallback = await synthesizeGoogleSpeechFallback(text, lang);
-  if (!fallback.ok) {
-    return Response.json({ error: 'Failed to generate audio' }, { status: 500, headers: corsHeaders });
-  }
-
-  const audioBuffer = await fallback.arrayBuffer();
-  return new Response(audioBuffer, {
-    headers: {
-      ...corsHeaders,
-      'Content-Type': fallback.headers.get('Content-Type') || 'audio/mpeg',
-      'Cache-Control': 'public, max-age=86400',
-      'X-TTS-Provider': 'google',
-      'X-TTS-Cache': 'miss',
-    },
+  console.error('joyjoy ELEVENLABS_API_KEY missing');
+  const fallback = await respondWithGoogleFallback(text, lang, 'ElevenLabs not configured');
+  return new Response(fallback.body, {
+    headers: { ...corsHeaders, ...Object.fromEntries(fallback.headers.entries()) },
   });
 }
 
-export {
-  buildTtsSynthesisText,
-  resolveElevenLabsVoiceId,
-  ttsCacheObjectKey,
-};
+export { buildTtsSynthesisText, resolveElevenLabsVoiceId };

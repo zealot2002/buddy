@@ -269,7 +269,6 @@ export async function onRequest(context) {
           companions,
           ttsConfig,
           apiKey: context.env?.ELEVENLABS_API_KEY,
-          r2Bucket: context.env?.TTS_CACHE,
           corsHeaders,
         });
       } catch (error) {

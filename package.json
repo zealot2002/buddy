@@ -13,8 +13,6 @@
     "db:migrate:remote": "CI=true wrangler d1 migrations apply buddy-walk --remote",
     "db:seed:remote": "tsx scripts/seed-walk-remote.ts",
     "db:setup:remote": "npm run db:migrate:remote && npm run db:seed:remote",
-    "tts:pregenerate:local": "tsx scripts/pregenerate-walk-tts.ts",
-    "tts:pregenerate:remote": "tsx scripts/pregenerate-walk-tts.ts --remote",
     "geocode:fences": "tsx scripts/geocode-walk-fences.ts",
     "lint": "eslint .",
     "preview": "vite preview",
