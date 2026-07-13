@@ -91,17 +91,32 @@ export const WalkListen = () => {
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
 
   useEffect(() => {
-    const isFetching = fetchingMessageId !== null;
-    const isSpeaking = isPlaying && mode === 'walk';
+    const { setOnPlay, setOnEnded } = usePlayerStore.getState();
 
-    if (isFetching) {
-      setCompanionState('preparing');
-    } else if (isSpeaking) {
-      setCompanionState('speaking');
-    } else {
+    const handlePlay = () => {
+      if (mode === 'walk') {
+        setCompanionState('speaking');
+      }
+    };
+
+    const handleEnded = () => {
+      setCompanionState('idle');
+    };
+
+    setOnPlay(handlePlay);
+    setOnEnded(handleEnded);
+
+    return () => {
+      setOnPlay(null);
+      setOnEnded(null);
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    if (!isPlaying && mode === 'walk') {
       setCompanionState('idle');
     }
-  }, [fetchingMessageId, isPlaying, mode]);
+  }, [isPlaying, mode]);
 
   const simPoint = useMemo(
     () => simFences.find((point) => point.id === simPointId) ?? simFences[0],
@@ -263,6 +278,7 @@ export const WalkListen = () => {
         actLabel: payload.actLabel,
         spotLabel: payload.fenceLabel ?? simPoint?.label,
       });
+      setCompanionState('preparing');
       playWalk(payload, defaultCompanionId, true);
     },
     [addMessage, defaultCompanionId, hasAreaContent, markJokePlayed, playWalk, simPoint?.label],
@@ -294,6 +310,7 @@ export const WalkListen = () => {
       if (!message.snippetId || !message.jokeId || fetchingMessageId) return;
 
       setFetchingMessageId(message.id);
+      setCompanionState('preparing');
       try {
         const narratorId = message.companionId ?? defaultCompanionId;
         const payload = await fetchWalkPlay(message.snippetId, narratorId, {

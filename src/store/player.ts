@@ -27,6 +27,7 @@ interface PlayerState {
   volume: number;
   duration: number;
   onEnded: (() => void) | null;
+  onPlay: (() => void) | null;
   play: (story: Story, companionId?: string, mode?: PlayerMode) => void;
   playWalk: (payload: WalkPayload, companionId: string, interrupt?: boolean) => void;
   pause: () => void;
@@ -35,6 +36,7 @@ interface PlayerState {
   setVolume: (volume: number) => void;
   switchCompanion: (companionId: string) => void;
   setOnEnded: (callback: (() => void) | null) => void;
+  setOnPlay: (callback: (() => void) | null) => void;
   stop: () => void;
 }
 
@@ -141,7 +143,9 @@ const startContentAudio = (
     ...extra,
   });
 
-  audioElement.play().catch((e) => {
+  audioElement.play().then(() => {
+    get().onPlay?.();
+  }).catch((e) => {
     console.error('joyjoy Playback failed:', e);
   });
 };
@@ -184,7 +188,9 @@ const startStoryAudio = (
     progress: 0,
   });
 
-  audioElement.play().catch((e) => {
+  audioElement.play().then(() => {
+    get().onPlay?.();
+  }).catch((e) => {
     console.error('joyjoy Playback failed:', e);
   });
 };
@@ -201,6 +207,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   volume: 0.8,
   duration: 0,
   onEnded: null,
+  onPlay: null,
 
   play: (story, companionId, mode = 'city') => {
     startStoryAudio(story, companionId || story.defaultCompanionId, mode, set, get);
@@ -273,6 +280,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setOnEnded: (callback) => set({ onEnded: callback }),
+  setOnPlay: (callback) => set({ onPlay: callback }),
 
   stop: () => {
     stopCurrentAudio();
