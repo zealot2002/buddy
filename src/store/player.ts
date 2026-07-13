@@ -28,6 +28,7 @@ interface PlayerState {
   duration: number;
   onEnded: (() => void) | null;
   onPlay: (() => void) | null;
+  onPause: (() => void) | null;
   play: (story: Story, companionId?: string, mode?: PlayerMode) => void;
   playWalk: (payload: WalkPayload, companionId: string, interrupt?: boolean) => void;
   pause: () => void;
@@ -37,6 +38,7 @@ interface PlayerState {
   switchCompanion: (companionId: string) => void;
   setOnEnded: (callback: (() => void) | null) => void;
   setOnPlay: (callback: (() => void) | null) => void;
+  setOnPause: (callback: (() => void) | null) => void;
   stop: () => void;
 }
 
@@ -208,6 +210,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   duration: 0,
   onEnded: null,
   onPlay: null,
+  onPause: null,
 
   play: (story, companionId, mode = 'city') => {
     startStoryAudio(story, companionId || story.defaultCompanionId, mode, set, get);
@@ -236,6 +239,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   pause: () => {
     audioElement?.pause();
     set({ isPlaying: false });
+    get().onPause?.();
   },
 
   toggle: () => {
@@ -243,6 +247,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (isPlaying) {
       audioElement?.pause();
       set({ isPlaying: false });
+      get().onPause?.();
     } else {
       audioElement?.play().catch((e) => {
         console.error('joyjoy Playback failed:', e);
@@ -281,9 +286,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   setOnEnded: (callback) => set({ onEnded: callback }),
   setOnPlay: (callback) => set({ onPlay: callback }),
+  setOnPause: (callback) => set({ onPause: callback }),
 
   stop: () => {
     stopCurrentAudio();
+    get().onPause?.();
     set({
       mode: 'city',
       currentStory: null,
@@ -295,6 +302,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       progress: 0,
       duration: 0,
       onEnded: null,
+      onPlay: null,
+      onPause: null,
     });
   },
 }));

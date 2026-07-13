@@ -62,7 +62,7 @@ export const WalkListen = () => {
   const { companions } = useCompanions();
   const { defaultCompanionId } = usePreferencesStore();
   const { lat, lng, isLocating, setLocating, setLocation, setError } = useLocationStore();
-  const { playWalk, isPlaying, mode } = usePlayerStore();
+  const { playWalk } = usePlayerStore();
   const { messages, addMessage, updateMessage, clearMessages } = useWalkChatStore();
   const markJokePlayed = useWalkPlayedJokesStore((state) => state.markPlayed);
   const { areaId, setAreaId } = useWalkAreaStore();
@@ -91,32 +91,30 @@ export const WalkListen = () => {
   const [companionState, setCompanionState] = useState<CompanionState>('idle');
 
   useEffect(() => {
-    const { setOnPlay, setOnEnded } = usePlayerStore.getState();
+    const { setOnPlay, setOnEnded, setOnPause } = usePlayerStore.getState();
 
     const handlePlay = () => {
-      if (mode === 'walk') {
-        setCompanionState('speaking');
-      }
+      setCompanionState('speaking');
     };
 
     const handleEnded = () => {
       setCompanionState('idle');
     };
 
+    const handlePause = () => {
+      setCompanionState('idle');
+    };
+
     setOnPlay(handlePlay);
     setOnEnded(handleEnded);
+    setOnPause(handlePause);
 
     return () => {
       setOnPlay(null);
       setOnEnded(null);
+      setOnPause(null);
     };
-  }, [mode]);
-
-  useEffect(() => {
-    if (!isPlaying && mode === 'walk') {
-      setCompanionState('idle');
-    }
-  }, [isPlaying, mode]);
+  }, []);
 
   const simPoint = useMemo(
     () => simFences.find((point) => point.id === simPointId) ?? simFences[0],
